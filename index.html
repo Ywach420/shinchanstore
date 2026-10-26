@@ -4,21 +4,22 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#d92f25">
   <title>Shinchan Store — Jajan Enak Setiap Hari</title>
-  <link rel="icon" type="image/png" href="logo-shinchan-store.png"><link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="topbar">
-  <a class="brand" href="#home" aria-label="Shinchan Store Beranda"><img class="brand-logo" src="logo-shinchan-store.png" alt="Logo Shinchan Store"></a>
+  <a class="brand" href="#"><span class="brand-icon">🍜</span><span>SHINCHAN <b>STORE</b><small>JAJAN ENAK SETIAP HARI</small></span></a>
   <nav><a href="#home">Beranda</a><a href="#kategori">Kategori</a><a href="#produk">Produk</a><a href="#promo">Promo</a></nav>
   <div class="top-actions"><button id="cart-open" class="cart-btn">🛒 <span>Keranjang</span> <i id="cart-count">0</i></button></div>
 </header>
 <main>
-  <section id="home" class="hero-banner" aria-label="Promosi Shinchan Store">
-    <img class="hero-banner-image" src="banner shinchan.png" alt="Shinchan Store — lengkap, murah, pasti enak! Indomie, jajanan, sambal, dan snack import.">
-    <div class="hero-banner-actions">
-      <a class="button primary" href="#produk">Belanja Sekarang <span>→</span></a>
-      <a class="button ghost" href="#promo">Lihat Promo</a>
+  <section id="home" class="hero">
+    <div class="hero-copy"><span class="eyebrow">✨ TEMAN NGEMIL KAMU</span><h1>Lagi Lapar?<br><em>Jajan Dulu!</em></h1>
+      <p>Indomie, sambal favorit, jajanan, dan camilan pilihan. Semua kesukaanmu ada di sini.</p>
+      <a class="button primary" href="#produk">Belanja Sekarang <span>→</span></a><a class="button ghost" href="#promo">Lihat Promo</a>
+      <div class="hero-note"><span>🚚</span> Praktis dipesan <span>•</span> Harga bersahabat</div>
     </div>
+    <div class="hero-art"><div class="burst">UENAK<br>POOL! ✦</div><div class="food-emoji">🍜</div><div class="snack snack-one">🍟</div><div class="snack snack-two">🌶️</div><div class="snack snack-three">🍘</div><div class="art-caption">MOOD BAGUS<br>PERUT PUAS 😋</div></div>
   </section>
   <section class="benefits"><div><span>🧡</span><p><b>Jajanan Favorit</b><small>Pilihan buat semua mood</small></p></div><div><span>📦</span><p><b>Pesan Praktis</b><small>Checkout langsung online</small></p></div><div><span>💬</span><p><b>Admin Siap Bantu</b><small>Hubungi kami via WhatsApp</small></p></div></section>
   <section id="kategori" class="section"><div class="section-head"><div><span class="eyebrow">PILIH SESUKAMU</span><h2>Jajan kategori apa nih?</h2></div><p>Temukan favoritmu dengan mudah.</p></div><div class="categories" id="categories"></div></section>
@@ -26,7 +27,7 @@
   <section id="produk" class="section"><div class="section-head product-head"><div><span class="eyebrow">DIPILIH BUAT KAMU</span><h2>Produk pilihan</h2></div><div class="search-wrap"><span>⌕</span><input id="search" type="search" placeholder="Cari Indomie, sambal, snack..."></div></div><div class="filter-row" id="filters"></div><div class="product-grid" id="product-grid"><div class="loading">Memuat produk...</div></div></section>
   <section class="contact-strip"><div><span class="eyebrow">BUTUH BANTUAN?</span><h2>Tim Shinchan siap bantu kamu.</h2><p>Tanya stok, rekomendasi jajanan, atau cara pemesanan.</p></div><a class="button primary" id="whatsapp-help" href="#" target="_blank" rel="noopener">Chat WhatsApp ↗</a></section>
 </main>
-<footer><a class="brand footer-brand" href="#home" aria-label="Shinchan Store Beranda"><img class="brand-logo footer-logo" src="logo-shinchan-store.png" alt="Logo Shinchan Store"></a><p>Jajan enak, hari makin asik. © <span id="year"></span> Shinchan Store</p></footer>
+<footer><a class="brand footer-brand" href="#"><span class="brand-icon">🍜</span><span>SHINCHAN <b>STORE</b><small>JAJAN ENAK SETIAP HARI</small></span></a><p>Jajan enak, hari makin asik. © <span id="year"></span> Shinchan Store</p><a href="admin.html" class="admin-link">Admin</a></footer>
 <div id="cart-drawer" class="drawer-backdrop" aria-hidden="true"><aside class="drawer"><div class="drawer-head"><div><span class="eyebrow">BELANJAAN KAMU</span><h2>Keranjang 🛒</h2></div><button id="cart-close" class="icon-btn" aria-label="Tutup">✕</button></div><div id="cart-items" class="cart-items"></div><div class="cart-bottom"><div class="total-line"><span>Total sementara</span><strong id="cart-total">Rp0</strong></div><button id="checkout-open" class="button primary full">Lanjut Checkout →</button></div></aside></div>
 <div id="checkout-modal" class="modal-backdrop" aria-hidden="true"><div class="modal"><button id="checkout-close" class="icon-btn modal-x">✕</button><span class="eyebrow">TINGGAL SELANGKAH LAGI</span><h2>Checkout pesanan</h2><form id="checkout-form"><label>Nama lengkap<input name="name" required maxlength="80" placeholder="Nama kamu"></label><label>Nomor WhatsApp<input name="phone" required inputmode="tel" placeholder="08xxxxxxxxxx"></label><label>Alamat pengantaran<textarea name="address" required rows="2" placeholder="Alamat lengkap"></textarea></label><label>Metode pembayaran<select name="payment" required><option value="">Pilih metode</option><option value="Transfer bank">Transfer bank</option><option value="QRIS">QRIS</option><option value="COD">COD (bayar saat diterima)</option></select></label><label>Catatan (opsional)<textarea name="note" rows="2" placeholder="Patokan alamat atau catatan pesanan"></textarea></label><div class="checkout-total">Total pesanan <strong id="checkout-total">Rp0</strong></div><button class="button primary full" type="submit">Buat Pesanan</button><p class="form-note">Pesanan akan disimpan jika Firebase sudah dikonfigurasi. Detail pembayaran akan dikonfirmasi admin.</p></form></div></div>
 <div id="toast" class="toast" role="status"></div>
