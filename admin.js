@@ -19,6 +19,10 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 
+/* =========================
+   BASIC HELPERS
+========================= */
+
 const $ = id => document.getElementById(id);
 
 const rupiah = n =>
@@ -51,6 +55,10 @@ function toast(message) {
 }
 
 
+/* =========================
+   STATE
+========================= */
+
 let products = [];
 let orders = [];
 
@@ -59,45 +67,33 @@ let currentImageUrl = "";
 let currentImagePath = "";
 
 
-function demoNotice() {
-  toast(
-    "Firebase belum dikonfigurasi. Lengkapi firebase.js dan login admin."
-  );
-}
-function previewImage(file) {
-  const preview = $("image-preview");
-  const img = $("image-preview-img");
+/* =========================
+   IMAGE PREVIEW
+========================= */
 
-  if (!file) {
-    selectedImage = null;
-    preview.hidden = true;
-    img.src = "";
-    return;
-  }
+function validateImage(file) {
+  if (!file) return false;
 
-  if (!file.type.startsWith("image/")) {
-    toast("File harus berupa gambar.");
-    $("imageFile").value = "";
-    return;
+  const allowed = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif"
+  ];
+
+  if (!allowed.includes(file.type)) {
+    toast("Format foto harus JPG, PNG, WEBP, atau GIF.");
+    return false;
   }
 
   if (file.size > 2 * 1024 * 1024) {
     toast("Ukuran foto maksimal 2 MB.");
-    $("imageFile").value = "";
-    return;
+    return false;
   }
 
-  selectedImage = file;
-
-  const reader = new FileReader();
-
-  reader.onload = () => {
-    img.src = reader.result;
-    preview.hidden = false;
-  };
-
-  reader.readAsDataURL(file);
+  return true;
 }
+
 
 function showImagePreview(url = "") {
   const preview = $("image-preview");
@@ -124,88 +120,78 @@ function clearImageSelection() {
     input.value = "";
   }
 }
-$("imageFile").addEventListener("change", e => {
-  previewImage(e.target.files[0]);
-});
-
-function validateImage(file) {
-  if (!file) return false;
-
-  const allowed = [
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "image/gif"
-  ];
-
-  if (!allowed.includes(file.type)) {
-    toast("Format foto harus JPG, PNG, WEBP, atau GIF.");
-    return false;
-  }
-
-  if (file.size > 2 * 1024 * 1024) {
-    toast("Ukuran foto maksimal 2 MB.");
-    return false;
-  }
-
-  return true;
-}
 
 
-async function uploadImage(file, productName) {
-  const user = auth.currentUser;
+/* =========================
+   IMAGE FILE CHANGE
+========================= */
 
-  if (!user) {
-    throw new Error("Admin belum login.");
-  }
+if ($("imageFile")) {
 
-  const idToken = await user.getIdToken();
+  $("imageFile").addEventListener("change", event => {
 
-  const formData = new FormData();
+    const file = event.target.files?.[0];
 
-  formData.append("file", file);
-  formData.append("productName", productName);
+    if (!file) {
+      clearImageSelection();
+      return;
+    }
 
-  const response = await fetch("/api/upload-image", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${idToken}`
-    },
-    body: formData
+    if (!validateImage(file)) {
+      clearImageSelection();
+      return;
+    }
+
+    selectedImageFile = file;
+
+    const previewUrl = URL.createObjectURL(file);
+
+    showImagePreview(previewUrl);
   });
 
-  let data = {};
-
-  try {
-    data = await response.json();
-  } catch {
-    throw new Error("Server mengirim response yang tidak valid.");
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      data.error || "Upload foto gagal."
-    );
-  }
-
-  return data;
 }
 
 
+/* =========================
+   FIREBASE NOTICE
+========================= */
+
+function demoNotice() {
+  toast(
+    "Firebase belum dikonfigurasi. Lengkapi firebase.js dan login admin."
+  );
+}
+
+
+/* =========================
+   AUTH
+========================= */
+
 onAuthStateChanged(auth, user => {
+
   if (user) {
+
     $("login-panel").hidden = true;
     $("dashboard").hidden = false;
 
     loadAll();
+
   } else {
+
     $("login-panel").hidden = false;
     $("dashboard").hidden = true;
+
   }
+
 });
 
 
+/* =========================
+   LOGIN
+========================= */
+
 $("login-form").addEventListener("submit", async e => {
+
   e.preventDefault();
 
   if (!firebaseConfigured) {
@@ -213,44 +199,83 @@ $("login-form").addEventListener("submit", async e => {
     return;
   }
 
-  const f = new FormData(e.currentTarget);
+  const form = new FormData(e.currentTarget);
+
+  const email = String(form.get("email") || "").trim();
+  const password = String(form.get("password") || "");
 
   try {
+
     await signInWithEmailAndPassword(
       auth,
-      f.get("email"),
-      f.get("password")
+      email,
+      password
     );
+
   } catch (err) {
+
     console.error(err);
 
     toast(
-      "Login gagal: periksa email, password, dan pengaturan Firebase."
+      "Login gagal. Periksa email, password, dan Firebase Authentication."
     );
+
   }
+
 });
 
 
-$("logout").onclick = () => signOut(auth);
+/* =========================
+   LOGOUT
+========================= */
 
+$("logout").onclick = async () => {
+
+  try {
+
+    await signOut(auth);
+
+  } catch (err) {
+
+    console.error(err);
+
+    toast("Gagal keluar dari dashboard.");
+
+  }
+
+};
+
+
+/* =========================
+   LOAD ALL
+========================= */
 
 async function loadAll() {
+
   await Promise.all([
     loadProducts(),
     loadOrders()
   ]);
+
 }
 
 
+/* =========================
+   PRODUCTS
+========================= */
+
 async function loadProducts() {
+
   if (!firebaseConfigured) {
+
     $("admin-products").innerHTML =
-      '<tr><td colspan="4">Konfigurasikan Firebase untuk mengelola produk secara online.</td></tr>';
+      '<tr><td colspan="4">Konfigurasikan Firebase untuk mengelola produk.</td></tr>';
 
     return;
   }
 
   try {
+
     const snap = await getDocs(
       collection(db, "products")
     );
@@ -262,18 +287,121 @@ async function loadProducts() {
 
     renderProducts();
 
-  } catch (e) {
+  } catch (err) {
+
+    console.error(err);
+
     toast(
       "Tidak dapat membaca produk. Periksa Firestore Rules."
     );
 
-    console.error(e);
   }
+
 }
 
 
+/* =========================
+   RENDER PRODUCTS
+========================= */
+
+function renderProducts() {
+
+  $("stat-products").textContent =
+    products.filter(p => p.active !== false).length;
+
+  $("admin-products").innerHTML =
+
+    products.length
+
+      ? products.map(p => `
+
+        <tr>
+
+          <td>
+
+            <strong>
+              ${esc(p.emoji || "🍪")} ${esc(p.name)}
+            </strong>
+
+            <small>
+              ${esc(p.category || "Lainnya")}
+            </small>
+
+          </td>
+
+          <td>
+            ${rupiah(p.price)}
+          </td>
+
+          <td>
+            ${Number(p.stock) || 0}
+          </td>
+
+          <td>
+
+            <button
+              class="table-action edit"
+              data-edit="${esc(p.id)}"
+            >
+              Edit
+            </button>
+
+            <button
+              class="table-action delete"
+              data-delete="${esc(p.id)}"
+            >
+              Hapus
+            </button>
+
+          </td>
+
+        </tr>
+
+      `).join("")
+
+      : `
+
+        <tr>
+
+          <td colspan="4">
+            Belum ada produk. Tambahkan lewat formulir.
+          </td>
+
+        </tr>
+
+      `;
+
+
+  $("admin-products")
+    .querySelectorAll("[data-edit]")
+    .forEach(button => {
+
+      button.onclick = () =>
+        editProduct(button.dataset.edit);
+
+    });
+
+
+  $("admin-products")
+    .querySelectorAll("[data-delete]")
+    .forEach(button => {
+
+      button.onclick = () =>
+        removeProduct(button.dataset.delete);
+
+    });
+
+}
+
+
+/* =========================
+   ORDERS
+========================= */
+
 async function loadOrders() {
+
   if (!firebaseConfigured) {
+
     $("admin-orders").innerHTML =
       '<tr><td colspan="6">Konfigurasikan Firebase untuk melihat pesanan.</td></tr>';
 
@@ -281,6 +409,7 @@ async function loadOrders() {
   }
 
   try {
+
     const snap = await getDocs(
       query(
         collection(db, "orders"),
@@ -295,211 +424,216 @@ async function loadOrders() {
 
     renderOrders();
 
-  } catch (e) {
+  } catch (err) {
+
+    console.error(err);
+
     $("admin-orders").innerHTML =
       '<tr><td colspan="6">Gagal memuat pesanan. Periksa Firestore Rules.</td></tr>';
 
-    console.error(e);
   }
+
 }
 
 
-function renderProducts() {
-  $("stat-products").textContent =
-    products.filter(p => p.active !== false).length;
-
-  $("admin-products").innerHTML =
-    products.length
-      ? products.map(p => `
-        <tr>
-          <td>
-            <strong>
-              ${esc(p.emoji || "🍪")} ${esc(p.name)}
-            </strong>
-            <small>${esc(p.category)}</small>
-          </td>
-
-          <td>${rupiah(p.price)}</td>
-
-          <td>${Number(p.stock) || 0}</td>
-
-          <td>
-            <button
-              class="table-action edit"
-              data-edit="${esc(p.id)}"
-            >
-              Edit
-            </button>
-
-            <button
-              class="table-action delete"
-              data-delete="${esc(p.id)}"
-            >
-              Hapus
-            </button>
-          </td>
-        </tr>
-      `).join("")
-      : `
-        <tr>
-          <td colspan="4">
-            Belum ada produk. Tambahkan lewat formulir.
-          </td>
-        </tr>
-      `;
-
-  $("admin-products")
-    .querySelectorAll("[data-edit]")
-    .forEach(button => {
-      button.onclick = () =>
-        editProduct(button.dataset.edit);
-    });
-
-  $("admin-products")
-    .querySelectorAll("[data-delete]")
-    .forEach(button => {
-      button.onclick = () =>
-        removeProduct(button.dataset.delete);
-    });
-}
-
+/* =========================
+   RENDER ORDERS
+========================= */
 
 function renderOrders() {
+
   $("stat-orders").textContent = orders.length;
 
   $("stat-sales").textContent = rupiah(
     orders
       .filter(o => o.status === "Selesai")
       .reduce(
-        (sum, o) => sum + (Number(o.total) || 0),
+        (sum, o) =>
+          sum + (Number(o.total) || 0),
         0
       )
   );
 
+
   $("admin-orders").innerHTML =
+
     orders.length
+
       ? orders.map(o => `
+
         <tr>
+
           <td>
-            <strong>${esc(o.id.slice(0, 9))}</strong>
+
+            <strong>
+              ${esc(o.id.slice(0, 9))}
+            </strong>
+
             <small>
               ${esc(o.customerName)} · ${esc(o.phone)}
             </small>
-            <small>${esc(o.address)}</small>
+
+            <small>
+              ${esc(o.address)}
+            </small>
+
           </td>
 
+
           <td>
+
             ${(o.items || [])
-              .map(
-                i =>
-                  `${esc(i.name)} ×${Number(i.qty) || 1}`
+              .map(i =>
+                `${esc(i.name)} ×${Number(i.qty) || 1}`
               )
               .join("<br>")}
+
           </td>
 
+
           <td>
-            <strong>${rupiah(o.total)}</strong>
+            <strong>
+              ${rupiah(o.total)}
+            </strong>
           </td>
 
-          <td>${esc(o.payment)}</td>
 
           <td>
+            ${esc(o.payment)}
+          </td>
+
+
+          <td>
+
             <span class="status-pill">
-              ${esc(o.status || "Menunggu konfirmasi")}
+              ${esc(
+                o.status ||
+                "Menunggu konfirmasi"
+              )}
             </span>
+
           </td>
 
+
           <td>
+
             <select
               class="status-select"
               data-status="${esc(o.id)}"
             >
-              <option ${o.status === "Menunggu konfirmasi" ? "selected" : ""}>
+
+              <option
+                ${o.status === "Menunggu konfirmasi"
+                  ? "selected"
+                  : ""}
+              >
                 Menunggu konfirmasi
               </option>
 
-              <option ${o.status === "Diproses" ? "selected" : ""}>
+              <option
+                ${o.status === "Diproses"
+                  ? "selected"
+                  : ""}
+              >
                 Diproses
               </option>
 
-              <option ${o.status === "Dikirim" ? "selected" : ""}>
+              <option
+                ${o.status === "Dikirim"
+                  ? "selected"
+                  : ""}
+              >
                 Dikirim
               </option>
 
-              <option ${o.status === "Selesai" ? "selected" : ""}>
+              <option
+                ${o.status === "Selesai"
+                  ? "selected"
+                  : ""}
+              >
                 Selesai
               </option>
 
-              <option ${o.status === "Dibatalkan" ? "selected" : ""}>
+              <option
+                ${o.status === "Dibatalkan"
+                  ? "selected"
+                  : ""}
+              >
                 Dibatalkan
               </option>
+
             </select>
+
           </td>
+
         </tr>
+
       `).join("")
+
       : `
+
         <tr>
+
           <td colspan="6">
             Belum ada pesanan.
           </td>
+
         </tr>
+
       `;
+
 
   $("admin-orders")
     .querySelectorAll("[data-status]")
     .forEach(select => {
+
       select.onchange = () =>
         updateStatus(
           select.dataset.status,
           select.value
         );
+
     });
+
 }
 
+
+/* =========================
+   EDIT PRODUCT
+========================= */
 
 function editProduct(id) {
-  const p = products.find(x => x.id === id);
 
-  if (!p) return;
+  const product =
+    products.find(p => p.id === id);
 
-  const f = $("product-form");
+  if (!product) return;
 
-  for (
-    const key of [
-      "id",
-      "name",
-      "category",
-      "price",
-      "stock",
-      "emoji",
-      "description",
-      "badge"
-    ]
-  ) {
-    if (f.elements[key]) {
-      f.elements[key].value = p[key] ?? "";
+
+  const form =
+    $("product-form");
+
+
+  for (const key of [
+    "id",
+    "name",
+    "category",
+    "price",
+    "stock",
+    "emoji",
+    "description",
+    "badge"
+  ]) {
+
+    if (form.elements[key]) {
+
+      form.elements[key].value =
+        product[key] ?? "";
+
     }
+
   }
 
-  selectedImage = null;
-
-  $("imageFile").value = "";
-
-  if (p.imageUrl) {
-    $("image-preview-img").src = p.imageUrl;
-    $("image-preview").hidden = false;
-  } else {
-    $("image-preview-img").src = "";
-    $("image-preview").hidden = true;
-  }
-
-  $("product-form-title").textContent = "Edit produk";
-
-  f.scrollIntoView({
-    behavior: "smooth",
-    block: "center"
-  });
-}
 
   currentImageUrl =
     product.imageUrl || "";
@@ -507,292 +641,419 @@ function editProduct(id) {
   currentImagePath =
     product.imagePath || "";
 
+
   clearImageSelection();
 
+
   if (currentImageUrl) {
-    showImagePreview(currentImageUrl);
+
+    showImagePreview(
+      currentImageUrl
+    );
+
   } else {
+
     showImagePreview("");
+
   }
+
 
   $("product-form-title").textContent =
     "Edit produk";
+
 
   form.scrollIntoView({
     behavior: "smooth",
     block: "center"
   });
+
 }
 
 
+/* =========================
+   RESET FORM
+========================= */
+
 function resetForm() {
+
   $("product-form").reset();
 
   $("product-form").elements.id.value = "";
-  $("product-form").elements.emoji.value = "🍜";
 
-  $("imageFile").value = "";
-  $("image-preview-img").src = "";
-  $("image-preview").hidden = true;
+  $("product-form").elements.emoji.value =
+    "🍜";
 
-  selectedImage = null;
+  currentImageUrl = "";
+  currentImagePath = "";
 
-  $("product-form-title").textContent = "Tambah produk";
+  clearImageSelection();
+
+  showImagePreview("");
+
+  $("product-form-title").textContent =
+    "Tambah produk";
+
 }
 
 
-$("cancel-edit").onclick = resetForm;
+$("cancel-edit").onclick =
+  resetForm;
 
 
-$("imageFile").addEventListener(
-  "change",
-  event => {
-    const file =
-      event.target.files?.[0];
+/* =========================
+   UPLOAD IMAGE
+========================= */
 
-    if (!file) {
-      selectedImageFile = null;
-      return;
-    }
+async function uploadImage(file, productName) {
 
-    if (!validateImage(file)) {
-      clearImageSelection();
-      return;
-    }
-
-    selectedImageFile = file;
-
-    const previewUrl =
-      URL.createObjectURL(file);
-
-    showImagePreview(previewUrl);
-  }
-);
+  if (!file) return null;
 
 
-$("product-form").addEventListener("submit", async e => {
-  e.preventDefault();
+  const user =
+    auth.currentUser;
 
-  if (!firebaseConfigured) {
-    demoNotice();
-    return;
+  if (!user) {
+
+    throw new Error(
+      "Sesi admin sudah habis. Silakan login lagi."
+    );
+
   }
 
-  const f = new FormData(e.currentTarget);
-  const id = String(f.get("id") || "");
 
-  const submitButton = e.currentTarget.querySelector(
-    'button[type="submit"]'
+  const idToken =
+    await user.getIdToken();
+
+
+  const formData =
+    new FormData();
+
+  formData.append(
+    "file",
+    file
   );
 
-  const originalText = submitButton.textContent;
+  formData.append(
+    "productName",
+    productName
+  );
+
+
+  const response =
+    await fetch(
+      "/api/upload-image",
+      {
+        method: "POST",
+
+        headers: {
+          Authorization:
+            `Bearer ${idToken}`
+        },
+
+        body: formData
+      }
+    );
+
+
+  let data = {};
 
   try {
-    submitButton.disabled = true;
-    submitButton.textContent = "Mengupload...";
 
-    let imageUrl = "";
+    data =
+      await response.json();
 
-    // Kalau sedang edit dan tidak memilih foto baru,
-    // pertahankan foto lama.
-    if (id) {
-      const oldProduct = products.find(p => p.id === id);
-      imageUrl = oldProduct?.imageUrl || "";
-    }
+  } catch {
 
-    // Kalau pilih foto baru → upload
-    if (selectedImage) {
-      toast("Mengupload foto...");
-
-      imageUrl = await uploadProductImage(selectedImage);
-
-      if (!imageUrl) {
-        throw new Error("URL foto tidak diterima.");
-      }
-    }
-
-    const payload = {
-      name: String(f.get("name") || "").trim(),
-      category: String(f.get("category") || ""),
-      price: Number(f.get("price")),
-      stock: Number(f.get("stock")),
-      emoji: String(f.get("emoji") || "🍪"),
-      imageUrl,
-      description: String(f.get("description") || ""),
-      badge: String(f.get("badge") || ""),
-      active: true,
-      updatedAt: serverTimestamp()
-    };
-
-    if (!payload.name) {
-      throw new Error("Nama produk wajib diisi.");
-    }
-
-    if (!Number.isFinite(payload.price) || payload.price < 0) {
-      throw new Error("Harga produk tidak valid.");
-    }
-
-    if (!Number.isFinite(payload.stock) || payload.stock < 0) {
-      throw new Error("Stok produk tidak valid.");
-    }
-
-    if (id) {
-      await updateDoc(
-        doc(db, "products", id),
-        payload
-      );
-    } else {
-      await addDoc(
-        collection(db, "products"),
-        {
-          ...payload,
-          createdAt: serverTimestamp()
-        }
-      );
-    }
-
-    resetForm();
-
-    selectedImage = null;
-
-    $("imageFile").value = "";
-    $("image-preview").hidden = true;
-    $("image-preview-img").src = "";
-
-    toast(
-      id
-        ? "Produk berhasil diperbarui."
-        : "Produk berhasil ditambahkan."
+    throw new Error(
+      "Server upload tidak memberikan response JSON."
     );
 
-    await loadProducts();
-
-  } catch (err) {
-    console.error(err);
-
-    toast(
-      err.message ||
-      "Gagal menyimpan produk."
-    );
-
-  } finally {
-    submitButton.disabled = false;
-    submitButton.textContent = originalText;
   }
-});
 
-    e.preventDefault();
 
-    if (!firebaseConfigured) {
-      demoNotice();
-      return;
-    }
+  if (!response.ok) {
 
-    const form =
-      new FormData(e.currentTarget);
+    throw new Error(
+      data.error ||
+      "Upload foto gagal."
+    );
 
-    const id =
-      String(form.get("id") || "");
+  }
 
-    const productName =
-      String(form.get("name") || "").trim();
 
-    try {
+  return data;
 
-      let imageUrl = currentImageUrl;
-      let imagePath = currentImagePath;
+}
 
-      if (selectedImageFile) {
 
-        toast("Mengupload foto...");
+/* =========================
+   SAVE PRODUCT
+========================= */
 
-        const uploaded =
-          await uploadImage(
-            selectedImageFile,
-            productName
+$("product-form")
+  .addEventListener(
+    "submit",
+    async e => {
+
+      e.preventDefault();
+
+
+      if (!firebaseConfigured) {
+
+        demoNotice();
+
+        return;
+
+      }
+
+
+      const form =
+        new FormData(
+          e.currentTarget
+        );
+
+
+      const id =
+        String(
+          form.get("id") || ""
+        );
+
+
+      const productName =
+        String(
+          form.get("name") || ""
+        ).trim();
+
+
+      const submitButton =
+        e.currentTarget.querySelector(
+          'button[type="submit"]'
+        );
+
+
+      const originalText =
+        submitButton.textContent;
+
+
+      try {
+
+        submitButton.disabled = true;
+
+        submitButton.textContent =
+          "Menyimpan...";
+
+
+        let imageUrl =
+          currentImageUrl;
+
+        let imagePath =
+          currentImagePath;
+
+
+        /*
+          Kalau memilih foto baru,
+          upload terlebih dahulu.
+        */
+
+        if (selectedImageFile) {
+
+          toast(
+            "Mengupload foto..."
           );
 
-        imageUrl =
-          uploaded.imageUrl;
 
-        imagePath =
-          uploaded.imagePath;
-      }
+          const uploaded =
+            await uploadImage(
+              selectedImageFile,
+              productName
+            );
 
-      const payload = {
-        name: productName,
 
-        category:
-          String(form.get("category")),
+          imageUrl =
+            uploaded.imageUrl ||
+            uploaded.url ||
+            "";
 
-        price:
-          Number(form.get("price")),
 
-        stock:
-          Number(form.get("stock")),
+          imagePath =
+            uploaded.imagePath ||
+            "";
 
-        emoji:
-          String(form.get("emoji") || "🍪"),
+        }
 
-        imageUrl,
 
-        imagePath,
+        const payload = {
 
-        description:
-          String(form.get("description") || ""),
+          name:
+            productName,
 
-        badge:
-          String(form.get("badge") || ""),
+          category:
+            String(
+              form.get("category") || ""
+            ),
 
-        active: true,
+          price:
+            Number(
+              form.get("price")
+            ),
 
-        updatedAt:
-          serverTimestamp()
-      };
+          stock:
+            Number(
+              form.get("stock")
+            ),
 
-      if (id) {
+          emoji:
+            String(
+              form.get("emoji") ||
+              "🍪"
+            ),
 
-        await updateDoc(
-          doc(db, "products", id),
-          payload
+          imageUrl,
+
+          imagePath,
+
+          description:
+            String(
+              form.get("description") ||
+              ""
+            ),
+
+          badge:
+            String(
+              form.get("badge") ||
+              ""
+            ),
+
+          active: true,
+
+          updatedAt:
+            serverTimestamp()
+
+        };
+
+
+        if (!payload.name) {
+
+          throw new Error(
+            "Nama produk wajib diisi."
+          );
+
+        }
+
+
+        if (
+          !Number.isFinite(
+            payload.price
+          ) ||
+          payload.price < 0
+        ) {
+
+          throw new Error(
+            "Harga produk tidak valid."
+          );
+
+        }
+
+
+        if (
+          !Number.isFinite(
+            payload.stock
+          ) ||
+          payload.stock < 0
+        ) {
+
+          throw new Error(
+            "Stok produk tidak valid."
+          );
+
+        }
+
+
+        /* EDIT */
+
+        if (id) {
+
+          await updateDoc(
+            doc(
+              db,
+              "products",
+              id
+            ),
+            payload
+          );
+
+
+        /* TAMBAH */
+
+        } else {
+
+          await addDoc(
+            collection(
+              db,
+              "products"
+            ),
+            {
+              ...payload,
+              createdAt:
+                serverTimestamp()
+            }
+          );
+
+        }
+
+
+        resetForm();
+
+
+        toast(
+          id
+            ? "Produk berhasil diperbarui! 🎉"
+            : "Produk berhasil ditambahkan! 🎉"
         );
 
-      } else {
 
-        await addDoc(
-          collection(db, "products"),
-          {
-            ...payload,
-            createdAt:
-              serverTimestamp()
-          }
+        await loadProducts();
+
+
+      } catch (err) {
+
+        console.error(
+          "PRODUCT ERROR:",
+          err
         );
+
+
+        toast(
+          err.message ||
+          "Gagal menyimpan produk."
+        );
+
+
+      } finally {
+
+        submitButton.disabled =
+          false;
+
+        submitButton.textContent =
+          originalText;
+
       }
 
-      resetForm();
-
-      toast(
-        "Produk berhasil disimpan! 🎉"
-      );
-
-      await loadProducts();
-
-    } catch (err) {
-
-      console.error(err);
-
-      toast(
-        err.message ||
-        "Gagal menyimpan produk."
-      );
     }
-  }
-);
+  );
 
+
+/* =========================
+   DELETE PRODUCT
+========================= */
 
 async function removeProduct(id) {
+
   const product =
-    products.find(p => p.id === id);
+    products.find(
+      p => p.id === id
+    );
+
 
   if (
     !product ||
@@ -800,35 +1061,61 @@ async function removeProduct(id) {
       `Hapus produk "${product.name}"?`
     )
   ) {
+
     return;
+
   }
+
 
   try {
 
     await deleteDoc(
-      doc(db, "products", id)
+      doc(
+        db,
+        "products",
+        id
+      )
     );
 
-    toast("Produk dihapus.");
+
+    toast(
+      "Produk dihapus."
+    );
+
 
     await loadProducts();
 
-  } catch (e) {
 
-    console.error(e);
+  } catch (err) {
+
+    console.error(err);
 
     toast(
       "Gagal menghapus produk. Periksa Firestore Rules."
     );
+
   }
+
 }
 
 
-async function updateStatus(id, status) {
+/* =========================
+   UPDATE ORDER STATUS
+========================= */
+
+async function updateStatus(
+  id,
+  status
+) {
+
   try {
 
     await updateDoc(
-      doc(db, "orders", id),
+      doc(
+        db,
+        "orders",
+        id
+      ),
       {
         status,
         updatedAt:
@@ -836,77 +1123,31 @@ async function updateStatus(id, status) {
       }
     );
 
+
     toast(
       "Status pesanan diperbarui."
     );
 
+
     await loadOrders();
 
-  } catch (e) {
 
-    console.error(e);
+  } catch (err) {
+
+    console.error(err);
 
     toast(
       "Gagal memperbarui status. Periksa Firestore Rules."
     );
+
   }
+
 }
-async function uploadProductImage(file) {
-  if (!file) return "";
 
-  const user = auth.currentUser;
 
-  if (!user) {
-    throw new Error("Sesi admin sudah habis. Silakan login lagi.");
-  }
-
-  const idToken = await user.getIdToken();
-
-  const reader = new FileReader();
-
-  const base64 = await new Promise((resolve, reject) => {
-    reader.onload = () => {
-      const result = String(reader.result || "");
-      const comma = result.indexOf(",");
-
-      if (comma === -1) {
-        reject(new Error("Format gambar tidak valid."));
-        return;
-      }
-
-      resolve(result.substring(comma + 1));
-    };
-
-    reader.onerror = () => {
-      reject(new Error("Gagal membaca file."));
-    };
-
-    reader.readAsDataURL(file);
-  });
-
-  const response = await fetch("/api/upload-image", {
-    method: "POST",
-
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${idToken}`
-    },
-
-    body: JSON.stringify({
-      fileName: file.name,
-      content: base64,
-      contentType: file.type
-    })
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error || "Upload foto gagal.");
-  }
-
-  return data.imageUrl;
-}
+/* =========================
+   REFRESH
+========================= */
 
 $("refresh").onclick =
   loadProducts;
