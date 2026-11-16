@@ -64,7 +64,40 @@ function demoNotice() {
     "Firebase belum dikonfigurasi. Lengkapi firebase.js dan login admin."
   );
 }
+function previewImage(file) {
+  const preview = $("image-preview");
+  const img = $("image-preview-img");
 
+  if (!file) {
+    selectedImage = null;
+    preview.hidden = true;
+    img.src = "";
+    return;
+  }
+
+  if (!file.type.startsWith("image/")) {
+    toast("File harus berupa gambar.");
+    $("imageFile").value = "";
+    return;
+  }
+
+  if (file.size > 2 * 1024 * 1024) {
+    toast("Ukuran foto maksimal 2 MB.");
+    $("imageFile").value = "";
+    return;
+  }
+
+  selectedImage = file;
+
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    img.src = reader.result;
+    preview.hidden = false;
+  };
+
+  reader.readAsDataURL(file);
+}
 
 function showImagePreview(url = "") {
   const preview = $("image-preview");
@@ -91,7 +124,9 @@ function clearImageSelection() {
     input.value = "";
   }
 }
-
+$("imageFile").addEventListener("change", e => {
+  previewImage(e.target.files[0]);
+});
 
 function validateImage(file) {
   if (!file) return false;
