@@ -21,3 +21,30 @@
   object-fit: contain;
   border-radius: 10px;
 }
+.image-preview[hidden] {
+  display: none !important;
+}
+
+.image-preview {
+  margin-top: 10px;
+  width: 100%;
+  max-width: 280px;
+  height: 190px;
+  border: 1px solid #eadfce;
+  border-radius: 14px;
+  background: #fff8ec;
+  padding: 10px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.image-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 10px;
+}
