@@ -458,28 +458,48 @@ function renderOrders() {
 
 
 function editProduct(id) {
-  const product =
-    products.find(p => p.id === id);
+  const p = products.find(x => x.id === id);
 
-  if (!product) return;
+  if (!p) return;
 
-  const form = $("product-form");
+  const f = $("product-form");
 
-  for (const key of [
-    "id",
-    "name",
-    "category",
-    "price",
-    "stock",
-    "emoji",
-    "description",
-    "badge"
-  ]) {
-    if (form.elements[key]) {
-      form.elements[key].value =
-        product[key] ?? "";
+  for (
+    const key of [
+      "id",
+      "name",
+      "category",
+      "price",
+      "stock",
+      "emoji",
+      "description",
+      "badge"
+    ]
+  ) {
+    if (f.elements[key]) {
+      f.elements[key].value = p[key] ?? "";
     }
   }
+
+  selectedImage = null;
+
+  $("imageFile").value = "";
+
+  if (p.imageUrl) {
+    $("image-preview-img").src = p.imageUrl;
+    $("image-preview").hidden = false;
+  } else {
+    $("image-preview-img").src = "";
+    $("image-preview").hidden = true;
+  }
+
+  $("product-form-title").textContent = "Edit produk";
+
+  f.scrollIntoView({
+    behavior: "smooth",
+    block: "center"
+  });
+}
 
   currentImageUrl =
     product.imageUrl || "";
@@ -509,19 +529,15 @@ function resetForm() {
   $("product-form").reset();
 
   $("product-form").elements.id.value = "";
+  $("product-form").elements.emoji.value = "🍜";
 
-  $("product-form").elements.emoji.value =
-    "🍜";
+  $("imageFile").value = "";
+  $("image-preview-img").src = "";
+  $("image-preview").hidden = true;
 
-  $("product-form-title").textContent =
-    "Tambah produk";
+  selectedImage = null;
 
-  selectedImageFile = null;
-  currentImageUrl = "";
-  currentImagePath = "";
-
-  clearImageSelection();
-  showImagePreview("");
+  $("product-form-title").textContent = "Tambah produk";
 }
 
 
@@ -554,9 +570,116 @@ $("imageFile").addEventListener(
 );
 
 
-$("product-form").addEventListener(
-  "submit",
-  async e => {
+$("product-form").addEventListener("submit", async e => {
+  e.preventDefault();
+
+  if (!firebaseConfigured) {
+    demoNotice();
+    return;
+  }
+
+  const f = new FormData(e.currentTarget);
+  const id = String(f.get("id") || "");
+
+  const submitButton = e.currentTarget.querySelector(
+    'button[type="submit"]'
+  );
+
+  const originalText = submitButton.textContent;
+
+  try {
+    submitButton.disabled = true;
+    submitButton.textContent = "Mengupload...";
+
+    let imageUrl = "";
+
+    // Kalau sedang edit dan tidak memilih foto baru,
+    // pertahankan foto lama.
+    if (id) {
+      const oldProduct = products.find(p => p.id === id);
+      imageUrl = oldProduct?.imageUrl || "";
+    }
+
+    // Kalau pilih foto baru → upload
+    if (selectedImage) {
+      toast("Mengupload foto...");
+
+      imageUrl = await uploadProductImage(selectedImage);
+
+      if (!imageUrl) {
+        throw new Error("URL foto tidak diterima.");
+      }
+    }
+
+    const payload = {
+      name: String(f.get("name") || "").trim(),
+      category: String(f.get("category") || ""),
+      price: Number(f.get("price")),
+      stock: Number(f.get("stock")),
+      emoji: String(f.get("emoji") || "🍪"),
+      imageUrl,
+      description: String(f.get("description") || ""),
+      badge: String(f.get("badge") || ""),
+      active: true,
+      updatedAt: serverTimestamp()
+    };
+
+    if (!payload.name) {
+      throw new Error("Nama produk wajib diisi.");
+    }
+
+    if (!Number.isFinite(payload.price) || payload.price < 0) {
+      throw new Error("Harga produk tidak valid.");
+    }
+
+    if (!Number.isFinite(payload.stock) || payload.stock < 0) {
+      throw new Error("Stok produk tidak valid.");
+    }
+
+    if (id) {
+      await updateDoc(
+        doc(db, "products", id),
+        payload
+      );
+    } else {
+      await addDoc(
+        collection(db, "products"),
+        {
+          ...payload,
+          createdAt: serverTimestamp()
+        }
+      );
+    }
+
+    resetForm();
+
+    selectedImage = null;
+
+    $("imageFile").value = "";
+    $("image-preview").hidden = true;
+    $("image-preview-img").src = "";
+
+    toast(
+      id
+        ? "Produk berhasil diperbarui."
+        : "Produk berhasil ditambahkan."
+    );
+
+    await loadProducts();
+
+  } catch (err) {
+    console.error(err);
+
+    toast(
+      err.message ||
+      "Gagal menyimpan produk."
+    );
+
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = originalText;
+  }
+});
 
     e.preventDefault();
 
@@ -728,7 +851,62 @@ async function updateStatus(id, status) {
     );
   }
 }
+async function uploadProductImage(file) {
+  if (!file) return "";
 
+  const user = auth.currentUser;
+
+  if (!user) {
+    throw new Error("Sesi admin sudah habis. Silakan login lagi.");
+  }
+
+  const idToken = await user.getIdToken();
+
+  const reader = new FileReader();
+
+  const base64 = await new Promise((resolve, reject) => {
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const comma = result.indexOf(",");
+
+      if (comma === -1) {
+        reject(new Error("Format gambar tidak valid."));
+        return;
+      }
+
+      resolve(result.substring(comma + 1));
+    };
+
+    reader.onerror = () => {
+      reject(new Error("Gagal membaca file."));
+    };
+
+    reader.readAsDataURL(file);
+  });
+
+  const response = await fetch("/api/upload-image", {
+    method: "POST",
+
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${idToken}`
+    },
+
+    body: JSON.stringify({
+      fileName: file.name,
+      content: base64,
+      contentType: file.type
+    })
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || "Upload foto gagal.");
+  }
+
+  return data.imageUrl;
+}
 
 $("refresh").onclick =
   loadProducts;
