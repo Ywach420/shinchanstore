@@ -1,186 +1,141 @@
-import admin from "firebase-admin";
+async function uploadImage(file, productName) {
 
-const OWNER = "Ywach420";
-const REPO = "shinchanstore";
-const BRANCH = "main";
-const ADMIN_EMAIL = "admin123123@gmail.com";
+  if (!file) {
+    throw new Error("Foto produk belum dipilih.");
+  }
 
-function getFirebaseAdmin() {
-  if (!admin.apps.length) {
-    const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  const user = auth.currentUser;
 
-    if (!raw) {
-      throw new Error("FIREBASE_SERVICE_ACCOUNT_JSON belum dikonfigurasi");
+  if (!user) {
+    throw new Error(
+      "Sesi admin sudah habis. Silakan login lagi."
+    );
+  }
+
+  // =========================
+  // FILE → BASE64
+  // =========================
+
+  const content = await new Promise((resolve, reject) => {
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+
+      const result = String(reader.result || "");
+
+      // Buang prefix:
+      // data:image/png;base64,
+      const base64 = result.split(",")[1];
+
+      if (!base64) {
+        reject(
+          new Error("Foto gagal diproses.")
+        );
+        return;
+      }
+
+      resolve(base64);
+    };
+
+    reader.onerror = () => {
+      reject(
+        new Error("Gagal membaca file foto.")
+      );
+    };
+
+    reader.readAsDataURL(file);
+
+  });
+
+
+  // =========================
+  // FIREBASE LOGIN TOKEN
+  // =========================
+
+  const idToken =
+    await user.getIdToken();
+
+
+  // =========================
+  // KIRIM KE API
+  // =========================
+
+  const response = await fetch(
+    "/api/upload-image",
+    {
+      method: "POST",
+
+      headers: {
+        "Authorization":
+          `Bearer ${idToken}`,
+
+        "Content-Type":
+          "application/json"
+      },
+
+      body: JSON.stringify({
+
+        fileName:
+          file.name,
+
+        content:
+          content,
+
+        contentType:
+          file.type
+
+      })
+
     }
+  );
 
-    const serviceAccount = JSON.parse(raw);
 
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-  }
-
-  return admin.app();
-}
-
-function cleanFileName(name = "image") {
-  return name
-    .normalize("NFKD")
-    .replace(/[^\w.-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .toLowerCase();
-}
-
-function getExtension(type) {
-  const map = {
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp",
-    "image/gif": "gif"
-  };
-
-  return map[type];
-}
-
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({
-      error: "Method not allowed"
-    });
-  }
+  let data = {};
 
   try {
-    // =========================
-    // 1. CEK FIREBASE LOGIN
-    // =========================
 
-    const authHeader = req.headers.authorization || "";
+    data =
+      await response.json();
 
-    if (!authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        error: "Login admin diperlukan"
-      });
-    }
+  } catch {
 
-    const idToken = authHeader.substring(7);
-
-    const firebaseApp = getFirebaseAdmin();
-    const decoded = await admin
-      .auth(firebaseApp)
-      .verifyIdToken(idToken);
-
-    if (decoded.email !== ADMIN_EMAIL) {
-      return res.status(403).json({
-        error: "Akses hanya untuk admin"
-      });
-    }
-
-    // =========================
-    // 2. CEK GITHUB TOKEN
-    // =========================
-
-    const githubToken = process.env.GITHUB_TOKEN;
-
-    if (!githubToken) {
-      return res.status(500).json({
-        error: "GITHUB_TOKEN belum dikonfigurasi di Vercel"
-      });
-    }
-
-    // =========================
-    // 3. AMBIL DATA FOTO
-    // =========================
-
-    const { fileName, content, contentType } = req.body || {};
-
-    if (!fileName || !content || !contentType) {
-      return res.status(400).json({
-        error: "Data foto tidak lengkap"
-      });
-    }
-
-    const extension = getExtension(contentType);
-
-    if (!extension) {
-      return res.status(400).json({
-        error: "Format foto tidak didukung"
-      });
-    }
-
-    // Maksimal 2 MB setelah decode
-    const estimatedBytes = Math.floor((content.length * 3) / 4);
-
-    if (estimatedBytes > 2 * 1024 * 1024) {
-      return res.status(400).json({
-        error: "Ukuran foto maksimal 2 MB"
-      });
-    }
-
-    // =========================
-    // 4. BUAT NAMA FILE
-    // =========================
-
-    const baseName =
-      cleanFileName(fileName.replace(/\.[^/.]+$/, "")) ||
-      "product";
-
-    const uniqueName =
-      `${Date.now()}-${baseName}.${extension}`;
-
-    const path =
-      `product-images/${uniqueName}`;
-
-    // =========================
-    // 5. UPLOAD KE GITHUB
-    // =========================
-
-    const githubResponse = await fetch(
-      `https://api.github.com/repos/${OWNER}/${REPO}/contents/${encodeURIComponent(path)}`,
-      {
-        method: "PUT",
-        headers: {
-          "Authorization": `Bearer ${githubToken}`,
-          "Accept": "application/vnd.github+json",
-          "X-GitHub-Api-Version": "2026-03-10",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          message: `Upload product image: ${uniqueName}`,
-          content,
-          branch: BRANCH
-        })
-      }
+    throw new Error(
+      "Server upload tidak memberikan response JSON."
     );
 
-    const githubData = await githubResponse.json();
-
-    if (!githubResponse.ok) {
-      console.error("GitHub error:", githubData);
-
-      return res.status(500).json({
-        error: "Gagal upload foto ke GitHub"
-      });
-    }
-
-    // =========================
-    // 6. URL FOTO
-    // =========================
-
-    const imageUrl =
-      `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${path}`;
-
-    return res.status(200).json({
-      success: true,
-      imageUrl,
-      path
-    });
-
-  } catch (error) {
-    console.error("Upload error:", error);
-
-    return res.status(500).json({
-      error: error.message || "Upload gagal"
-    });
   }
+
+
+  if (!response.ok) {
+
+    throw new Error(
+      data.error ||
+      "Upload foto gagal."
+    );
+
+  }
+
+
+  if (!data.imageUrl) {
+
+    throw new Error(
+      "Upload berhasil tetapi URL foto tidak diterima."
+    );
+
+  }
+
+
+  return {
+
+    imageUrl:
+      data.imageUrl,
+
+    imagePath:
+      data.path || "",
+
+    productName
+
+  };
+
 }
