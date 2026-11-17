@@ -273,3 +273,480 @@ footer p {
     padding: 11px;
   }
 }
+/* =========================================================
+   ✨ SHINCHAN STORE — VISUAL ENHANCEMENT
+   Aman: hanya override tampilan, tidak mengubah struktur/JS
+   ========================================================= */
+
+/* ---------- GLOBAL LOOK ---------- */
+body {
+  background:
+    radial-gradient(circle at 8% 8%, rgba(255, 190, 120, .10), transparent 24%),
+    radial-gradient(circle at 92% 30%, rgba(217, 47, 37, .06), transparent 22%),
+    var(--paper);
+}
+
+/* ---------- PLAYFUL CURSOR ---------- */
+html,
+body,
+button,
+a,
+input,
+select,
+textarea {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M6 3l5 21 5-7 7 7 3-3-7-7 8-2L6 3z' fill='%23d92f25' stroke='%23fff' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E") 3 2, auto;
+}
+
+button,
+a,
+.category,
+.filter,
+.add-btn,
+.cart-btn,
+.icon-btn {
+  cursor: pointer;
+}
+
+/* ---------- TOPBAR ---------- */
+.topbar {
+  box-shadow: 0 4px 24px rgba(70, 35, 15, .045);
+}
+
+.brand {
+  transition: transform .25s ease;
+}
+
+.brand:hover {
+  transform: translateY(-1px);
+}
+
+.brand-icon {
+  transition:
+    transform .25s ease,
+    box-shadow .25s ease;
+}
+
+.brand:hover .brand-icon {
+  transform: rotate(-5deg) scale(1.05);
+  box-shadow: 0 8px 18px rgba(217, 47, 37, .12);
+}
+
+/* ---------- HERO ---------- */
+.hero.hero-banner {
+  box-shadow:
+    0 20px 55px rgba(94, 45, 18, .10),
+    0 3px 8px rgba(94, 45, 18, .05);
+  transition:
+    transform .35s ease,
+    box-shadow .35s ease;
+}
+
+.hero.hero-banner:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 27px 65px rgba(94, 45, 18, .14),
+    0 5px 12px rgba(94, 45, 18, .06);
+}
+
+/* ---------- BENEFIT CARDS ---------- */
+.benefits > div {
+  transition:
+    transform .25s ease,
+    box-shadow .25s ease,
+    border-color .25s ease;
+}
+
+.benefits > div:hover {
+  transform: translateY(-4px);
+  border-color: #f2c6ad;
+  box-shadow: 0 12px 28px rgba(83, 42, 18, .08);
+}
+
+.benefits > div > span {
+  transition: transform .25s ease;
+}
+
+.benefits > div:hover > span {
+  transform: rotate(-6deg) scale(1.08);
+}
+
+/* ---------- CATEGORY ---------- */
+.category {
+  position: relative;
+  overflow: hidden;
+}
+
+.category::after {
+  content: "";
+  position: absolute;
+  width: 65px;
+  height: 65px;
+  right: -30px;
+  bottom: -30px;
+  border-radius: 50%;
+  background: rgba(217, 47, 37, .055);
+  transition: transform .3s ease;
+}
+
+.category:hover::after,
+.category.active::after {
+  transform: scale(1.8);
+}
+
+.category .emoji {
+  transition:
+    transform .3s ease,
+    filter .3s ease;
+}
+
+.category:hover .emoji,
+.category.active .emoji {
+  transform: translateY(-3px) scale(1.08) rotate(-4deg);
+  filter: drop-shadow(0 7px 7px rgba(105, 49, 25, .12));
+}
+
+/* ---------- FILTER ---------- */
+.filter {
+  transition:
+    transform .2s ease,
+    box-shadow .2s ease,
+    background .2s ease;
+}
+
+.filter:hover {
+  transform: translateY(-2px);
+}
+
+.filter.active {
+  box-shadow: 0 7px 16px rgba(217, 47, 37, .18);
+}
+
+/* ---------- PROMO ---------- */
+.promo.promo-banner {
+  box-shadow: 0 18px 45px rgba(114, 28, 18, .14);
+  transition:
+    transform .3s ease,
+    box-shadow .3s ease;
+}
+
+.promo.promo-banner:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 25px 55px rgba(114, 28, 18, .19);
+}
+
+/* ---------- PRODUCT GRID ---------- */
+.product-grid {
+  perspective: 1000px;
+}
+
+.product-card {
+  position: relative;
+  isolation: isolate;
+  transition:
+    transform .28s cubic-bezier(.2,.8,.2,1),
+    box-shadow .28s ease,
+    border-color .28s ease;
+}
+
+.product-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    rgba(255,255,255,.55),
+    transparent 45%
+  );
+  opacity: 0;
+  transition: opacity .25s ease;
+  z-index: 1;
+}
+
+.product-card:hover {
+  transform: translateY(-7px) rotateX(1deg);
+  border-color: #f0d1bd;
+  box-shadow:
+    0 18px 38px rgba(75, 37, 18, .11),
+    0 3px 8px rgba(75, 37, 18, .05);
+}
+
+.product-card:hover::before {
+  opacity: 1;
+}
+
+/* ---------- PRODUCT IMAGE ---------- */
+.product-image {
+  background:
+    radial-gradient(circle at 50% 45%, #fffdf8 0%, #fff4e4 72%);
+}
+
+.product-image .product-photo {
+  transition:
+    transform .4s cubic-bezier(.2,.8,.2,1),
+    filter .4s ease;
+}
+
+.product-card:hover .product-photo {
+  transform: scale(1.055);
+  filter: saturate(1.04);
+}
+
+.product-image .emoji {
+  transition:
+    transform .35s cubic-bezier(.2,.8,.2,1),
+    filter .35s ease;
+}
+
+.product-card:hover .product-image .emoji {
+  transform: scale(1.08) rotate(-3deg);
+}
+
+/* ---------- PRODUCT BADGE ---------- */
+.badge {
+  z-index: 3;
+  box-shadow: 0 5px 12px rgba(155, 44, 28, .10);
+  transition:
+    transform .25s ease,
+    box-shadow .25s ease;
+}
+
+.product-card:hover .badge {
+  transform: rotate(-2deg) translateY(-2px);
+  box-shadow: 0 8px 16px rgba(155, 44, 28, .14);
+}
+
+/* ---------- PRODUCT INFO ---------- */
+.product-info h3 {
+  transition: color .2s ease;
+}
+
+.product-card:hover .product-info h3 {
+  color: var(--red);
+}
+
+.product-info .category-name {
+  transition: color .2s ease;
+}
+
+.product-card:hover .category-name {
+  color: #b66b4f;
+}
+
+/* ---------- ADD BUTTON ---------- */
+.add-btn {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform .2s ease,
+    background .2s ease,
+    color .2s ease,
+    box-shadow .2s ease;
+}
+
+.add-btn::after {
+  content: "";
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.22);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform .3s ease;
+}
+
+.add-btn:hover {
+  transform: scale(1.08) rotate(-3deg);
+  box-shadow: 0 8px 17px rgba(217, 47, 37, .20);
+}
+
+.add-btn:hover::after {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.add-btn:active {
+  transform: scale(.94);
+}
+
+/* ---------- SEARCH ---------- */
+.search-wrap {
+  transition:
+    border-color .2s ease,
+    box-shadow .2s ease,
+    transform .2s ease;
+}
+
+.search-wrap:focus-within {
+  border-color: #e8a092;
+  box-shadow: 0 8px 22px rgba(217, 47, 37, .08);
+  transform: translateY(-1px);
+}
+
+/* ---------- CONTACT ---------- */
+.contact-strip {
+  transition:
+    transform .3s ease,
+    box-shadow .3s ease;
+}
+
+.contact-strip:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 35px rgba(86, 43, 17, .07);
+}
+
+/* ---------- BUTTONS ---------- */
+.button {
+  position: relative;
+  overflow: hidden;
+}
+
+.button::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 70%;
+  height: 100%;
+  transform: skewX(-20deg);
+  background: rgba(255,255,255,.16);
+  transition: left .5s ease;
+}
+
+.button:hover::after {
+  left: 140%;
+}
+
+.primary:hover {
+  box-shadow:
+    0 12px 27px rgba(217, 47, 37, .22);
+}
+
+/* ---------- CART BUTTON ---------- */
+.cart-btn {
+  transition:
+    transform .2s ease,
+    box-shadow .2s ease,
+    border-color .2s ease;
+}
+
+.cart-btn:hover {
+  transform: translateY(-2px);
+  border-color: #efc7b8;
+  box-shadow: 0 8px 20px rgba(73, 37, 19, .08);
+}
+
+.cart-btn i {
+  transition: transform .2s ease;
+}
+
+.cart-btn:hover i {
+  transform: scale(1.08);
+}
+
+/* ---------- DRAWER ---------- */
+.drawer {
+  box-shadow: -15px 0 45px rgba(34, 23, 17, .10);
+}
+
+.cart-item {
+  transition:
+    background .2s ease,
+    transform .2s ease;
+  border-radius: 13px;
+  padding-left: 7px;
+  padding-right: 7px;
+}
+
+.cart-item:hover {
+  background: #fff8ef;
+  transform: translateX(-2px);
+}
+
+.cart-emoji {
+  transition: transform .25s ease;
+}
+
+.cart-item:hover .cart-emoji {
+  transform: rotate(-4deg) scale(1.04);
+}
+
+/* ---------- MODAL ---------- */
+.modal {
+  box-shadow:
+    0 25px 70px rgba(35, 23, 17, .20);
+}
+
+/* ---------- TOAST ---------- */
+.toast {
+  box-shadow: 0 12px 30px rgba(31, 22, 18, .20);
+}
+
+/* ---------- FOOTER ---------- */
+footer .brand-logo {
+  transition: transform .25s ease;
+}
+
+footer .footer-brand:hover .brand-logo {
+  transform: rotate(-4deg) scale(1.05);
+}
+
+/* ---------- SMALL FLOATING DECORATION ---------- */
+.hero-banner,
+.promo-banner,
+.contact-strip {
+  transform-origin: center;
+}
+
+/* ---------- REDUCE MOTION ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* =========================================================
+   📱 MOBILE SAFETY
+   Tidak membuat card terlalu besar / efek berlebihan
+   ========================================================= */
+
+@media (max-width: 620px) {
+
+  .product-card:hover {
+    transform: translateY(-3px);
+  }
+
+  .product-card:hover .product-photo {
+    transform: scale(1.025);
+  }
+
+  .category:hover,
+  .category.active {
+    transform: translateY(-2px);
+  }
+
+  .benefits > div:hover {
+    transform: translateY(-2px);
+  }
+
+  .promo.promo-banner:hover,
+  .contact-strip:hover,
+  .hero.hero-banner:hover {
+    transform: none;
+  }
+
+  .cart-btn:hover {
+    transform: none;
+  }
+
+  .search-wrap:focus-within {
+    transform: none;
+  }
+}
