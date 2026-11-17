@@ -3,8 +3,40 @@ import { collection, getDocs, addDoc, serverTimestamp, query, where, orderBy } f
 
 const WA_NUMBER = "94740491406";
 const categories = [
-  {name:"Semua Produk",emoji:"🛍️"},{name:"Mi Instan",emoji:"🍜"},{name:"Persambalan",emoji:"🌶️"},
-  {name:"Jajanan",emoji:"🍘"},{name:"Snack",emoji:"🍟"},{name:"Minuman",emoji:"🥤"},{name:"Bumbu Dapur",emoji:"🧂"}
+  {
+    name: "Semua Produk",
+    emoji: "🛍️"
+  },
+  {
+    name: "Mi Instan",
+    emoji: "🍜",
+    image: "./assets/categories/mi-instan.png"
+  },
+  {
+    name: "Persambalan",
+    emoji: "🌶️",
+    image: "./assets/categories/persambalan.png"
+  },
+  {
+    name: "Jajanan",
+    emoji: "🍘",
+    image: "./assets/categories/jajanan.png"
+  },
+  {
+    name: "Snack",
+    emoji: "🍟",
+    image: "./assets/categories/snack.png"
+  },
+  {
+    name: "Minuman",
+    emoji: "🥤",
+    image: "./assets/categories/minuman.png"
+  },
+  {
+    name: "Bumbu Dapur",
+    emoji: "🧂",
+    image: "./assets/categories/bumbu-dapur.png"
+  }
 ];
 const demoProducts = [
   {id:"demo1",name:"Indomie Mi Goreng",category:"Mi Instan",price:3500,stock:30,emoji:"🍜",description:"Favorit sepanjang masa",badge:"Favorit"},
@@ -25,9 +57,44 @@ async function loadProducts(){
   if(firebaseConfigured){try{const snap=await getDocs(query(collection(db,"products"),where("active","==",true)));if(!snap.empty)products=snap.docs.map(d=>({id:d.id,...d.data()}));}catch(e){console.warn("Firestore belum siap; memakai data demo.",e)}}
   renderCategories();renderFilters();renderProducts();
 }
-function renderCategories(){
-  $("categories").innerHTML=categories.slice(1).map(c=>`<button class="category ${activeCategory===c.name?"active":""}" data-category="${safeText(c.name)}"><span class="emoji">${c.emoji}</span><b>${safeText(c.name)}</b><small>Lihat produk →</small></button>`).join("");
-  $("categories").querySelectorAll("[data-category]").forEach(b=>b.onclick=()=>setCategory(b.dataset.category));
+function renderCategories() {
+  $("categories").innerHTML = categories.slice(1).map(c => `
+    <button
+      class="category ${activeCategory === c.name ? "active" : ""}"
+      data-category="${safeText(c.name)}"
+    >
+      <span class="category-visual">
+        ${
+          c.image
+            ? `
+              <img
+                src="${safeText(c.image)}"
+                alt="${safeText(c.name)}"
+                loading="lazy"
+                onerror="this.style.display='none';this.nextElementSibling.style.display='block'"
+              >
+            `
+            : ""
+        }
+
+        <span
+          class="category-fallback"
+          ${c.image ? 'style="display:none"' : ""}
+        >
+          ${c.emoji}
+        </span>
+      </span>
+
+      <b>${safeText(c.name)}</b>
+      <small>Lihat produk →</small>
+    </button>
+  `).join("");
+
+  $("categories")
+    .querySelectorAll("[data-category]")
+    .forEach(b => {
+      b.onclick = () => setCategory(b.dataset.category);
+    });
 }
 function renderFilters(){
   $("filters").innerHTML=categories.map(c=>`<button class="filter ${activeCategory===c.name?"active":""}" data-category="${safeText(c.name)}">${c.emoji} ${safeText(c.name)}</button>`).join("");
