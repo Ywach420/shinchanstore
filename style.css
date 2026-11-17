@@ -815,73 +815,163 @@ footer .footer-brand:hover .brand-logo {
   }
 }
 /* =========================================================
-   🖼️ SHINCHAN STORE — CATEGORY PNG
+   SHINCHAN STORE — CATEGORY PNG FIX
    ========================================================= */
+
+.categories {
+  align-items: stretch;
+}
 
 .category {
   position: relative;
   overflow: hidden;
+
+  /* Jangan biarkan isi gambar menentukan tinggi card */
+  min-height: 153px;
+  height: 153px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
 }
 
+/* BOX GAMBAR WAJIB TETAP */
 .category-visual {
-  width: 72px;
-  height: 72px;
+  width: 72px !important;
+  height: 72px !important;
+
+  min-width: 72px !important;
+  min-height: 72px !important;
+  max-width: 72px !important;
+  max-height: 72px !important;
+
+  flex: 0 0 72px;
+
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+
   margin: 0 auto 10px;
-  display: grid;
-  place-items: center;
+
   position: relative;
   z-index: 2;
+
+  overflow: hidden;
 }
 
+/* GAMBAR TIDAK BOLEH MENENTUKAN UKURAN CARD */
 .category-visual img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
+  display: block !important;
+
+  width: 100% !important;
+  height: 100% !important;
+
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+
+  object-fit: contain !important;
+  object-position: center;
+
+  flex: 0 0 auto;
+
   transition:
     transform .3s cubic-bezier(.2,.8,.2,1),
     filter .3s ease;
 }
 
+/* Emoji fallback */
 .category-fallback {
+  display: block;
   font-size: 34px;
   line-height: 1;
 }
 
-.category:hover .category-visual img,
-.category.active .category-visual img {
-  transform: scale(1.1) translateY(-3px) rotate(-3deg);
-  filter: drop-shadow(0 8px 8px rgba(80,40,20,.14));
-}
-
+/* Lingkaran dekorasi */
 .category::before {
   content: "";
   position: absolute;
+
   width: 105px;
   height: 105px;
+
   border-radius: 50%;
+
   background: #fff3e7;
+
   left: 50%;
-  top: 30px;
+  top: 28px;
+
   transform: translateX(-50%);
+
   z-index: 0;
-  opacity: .7;
+
+  pointer-events: none;
 }
 
 .category b,
 .category small {
   position: relative;
-  z-index: 2;
+  z-index: 3;
 }
 
+.category b {
+  flex: 0 0 auto;
+}
+
+.category small {
+  flex: 0 0 auto;
+}
+
+/* Hover */
+.category:hover .category-visual img,
+.category.active .category-visual img {
+  transform: scale(1.1) translateY(-2px) rotate(-3deg);
+
+  filter:
+    drop-shadow(0 7px 7px rgba(80,40,20,.14));
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
 @media (max-width: 620px) {
+
+  .category {
+    min-height: 125px;
+    height: 125px;
+
+    padding: 12px 6px;
+  }
+
   .category-visual {
-    width: 55px;
-    height: 55px;
-    margin-bottom: 8px;
+    width: 55px !important;
+    height: 55px !important;
+
+    min-width: 55px !important;
+    min-height: 55px !important;
+
+    max-width: 55px !important;
+    max-height: 55px !important;
+
+    flex-basis: 55px;
+
+    margin-bottom: 7px;
   }
 
   .category-fallback {
     font-size: 28px;
+  }
+
+  .category b {
+    font-size: 10px;
+  }
+
+  .category small {
+    font-size: 9px;
   }
 }
