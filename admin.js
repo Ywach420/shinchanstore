@@ -19,45 +19,49 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 
-/* =========================
-   BASIC HELPERS
-========================= */
+/* =========================================================
+   HELPERS
+========================================================= */
 
 const $ = id => document.getElementById(id);
 
-const rupiah = n =>
+const rupiah = number =>
   new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
     maximumFractionDigits: 0
-  }).format(n || 0);
+  }).format(Number(number) || 0);
 
-const esc = s =>
-  String(s ?? "").replace(/[&<>"']/g, c => ({
+const esc = value =>
+  String(value ?? "").replace(/[&<>"']/g, char => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
     '"': "&quot;",
     "'": "&#39;"
-  }[c]));
+  }[char]));
 
 function toast(message) {
-  const t = $("toast");
+  const element = $("toast");
 
-  if (!t) return;
+  if (!element) return;
 
-  t.textContent = message;
-  t.classList.add("show");
+  element.textContent = message;
+  element.classList.add("show");
 
   setTimeout(() => {
-    t.classList.remove("show");
+    element.classList.remove("show");
   }, 2600);
 }
 
+function demoNotice() {
+  toast("Firebase belum dikonfigurasi. Lengkapi firebase.js.");
+}
 
-/* =========================
+
+/* =========================================================
    STATE
-========================= */
+========================================================= */
 
 let products = [];
 let orders = [];
@@ -67,21 +71,21 @@ let currentImageUrl = "";
 let currentImagePath = "";
 
 
-/* =========================
-   IMAGE PREVIEW
-========================= */
+/* =========================================================
+   IMAGE VALIDATION
+========================================================= */
 
 function validateImage(file) {
   if (!file) return false;
 
-  const allowed = [
+  const allowedTypes = [
     "image/jpeg",
     "image/png",
     "image/webp",
     "image/gif"
   ];
 
-  if (!allowed.includes(file.type)) {
+  if (!allowedTypes.includes(file.type)) {
     toast("Format foto harus JPG, PNG, WEBP, atau GIF.");
     return false;
   }
@@ -94,6 +98,10 @@ function validateImage(file) {
   return true;
 }
 
+
+/* =========================================================
+   IMAGE PREVIEW
+========================================================= */
 
 function showImagePreview(url = "") {
   const preview = $("image-preview");
@@ -110,7 +118,6 @@ function showImagePreview(url = "") {
   }
 }
 
-
 function clearImageSelection() {
   selectedImageFile = null;
 
@@ -122,13 +129,15 @@ function clearImageSelection() {
 }
 
 
-/* =========================
-   IMAGE FILE CHANGE
-========================= */
+/* =========================================================
+   FILE INPUT
+========================================================= */
 
-if ($("imageFile")) {
+const imageFileInput = $("imageFile");
 
-  $("imageFile").addEventListener("change", event => {
+if (imageFileInput) {
+
+  imageFileInput.addEventListener("change", event => {
 
     const file = event.target.files?.[0];
 
@@ -147,25 +156,15 @@ if ($("imageFile")) {
     const previewUrl = URL.createObjectURL(file);
 
     showImagePreview(previewUrl);
+
   });
 
 }
 
 
-/* =========================
-   FIREBASE NOTICE
-========================= */
-
-function demoNotice() {
-  toast(
-    "Firebase belum dikonfigurasi. Lengkapi firebase.js dan login admin."
-  );
-}
-
-
-/* =========================
+/* =========================================================
    AUTH
-========================= */
+========================================================= */
 
 onAuthStateChanged(auth, user => {
 
@@ -186,20 +185,20 @@ onAuthStateChanged(auth, user => {
 });
 
 
-/* =========================
+/* =========================================================
    LOGIN
-========================= */
+========================================================= */
 
-$("login-form").addEventListener("submit", async e => {
+$("login-form").addEventListener("submit", async event => {
 
-  e.preventDefault();
+  event.preventDefault();
 
   if (!firebaseConfigured) {
     demoNotice();
     return;
   }
 
-  const form = new FormData(e.currentTarget);
+  const form = new FormData(event.currentTarget);
 
   const email = String(form.get("email") || "").trim();
   const password = String(form.get("password") || "");
@@ -212,9 +211,9 @@ $("login-form").addEventListener("submit", async e => {
       password
     );
 
-  } catch (err) {
+  } catch (error) {
 
-    console.error(err);
+    console.error("LOGIN ERROR:", error);
 
     toast(
       "Login gagal. Periksa email, password, dan Firebase Authentication."
@@ -225,9 +224,9 @@ $("login-form").addEventListener("submit", async e => {
 });
 
 
-/* =========================
+/* =========================================================
    LOGOUT
-========================= */
+========================================================= */
 
 $("logout").onclick = async () => {
 
@@ -235,9 +234,9 @@ $("logout").onclick = async () => {
 
     await signOut(auth);
 
-  } catch (err) {
+  } catch (error) {
 
-    console.error(err);
+    console.error("LOGOUT ERROR:", error);
 
     toast("Gagal keluar dari dashboard.");
 
@@ -246,9 +245,9 @@ $("logout").onclick = async () => {
 };
 
 
-/* =========================
+/* =========================================================
    LOAD ALL
-========================= */
+========================================================= */
 
 async function loadAll() {
 
@@ -260,9 +259,9 @@ async function loadAll() {
 }
 
 
-/* =========================
+/* =========================================================
    PRODUCTS
-========================= */
+========================================================= */
 
 async function loadProducts() {
 
@@ -276,20 +275,20 @@ async function loadProducts() {
 
   try {
 
-    const snap = await getDocs(
+    const snapshot = await getDocs(
       collection(db, "products")
     );
 
-    products = snap.docs.map(d => ({
-      id: d.id,
-      ...d.data()
+    products = snapshot.docs.map(document => ({
+      id: document.id,
+      ...document.data()
     }));
 
     renderProducts();
 
-  } catch (err) {
+  } catch (error) {
 
-    console.error(err);
+    console.error("LOAD PRODUCTS ERROR:", error);
 
     toast(
       "Tidak dapat membaca produk. Periksa Firestore Rules."
@@ -300,76 +299,71 @@ async function loadProducts() {
 }
 
 
-/* =========================
+/* =========================================================
    RENDER PRODUCTS
-========================= */
+========================================================= */
 
 function renderProducts() {
 
   $("stat-products").textContent =
-    products.filter(p => p.active !== false).length;
+    products.filter(product => product.active !== false).length;
 
-  $("admin-products").innerHTML =
+  $("admin-products").innerHTML = products.length
 
-    products.length
+    ? products.map(product => `
 
-      ? products.map(p => `
+      <tr>
 
-        <tr>
+        <td>
 
-          <td>
+          <strong>
+            ${esc(product.emoji || "🍪")}
+            ${esc(product.name)}
+          </strong>
 
-            <strong>
-              ${esc(p.emoji || "🍪")} ${esc(p.name)}
-            </strong>
+          <small>
+            ${esc(product.category || "Lainnya")}
+          </small>
 
-            <small>
-              ${esc(p.category || "Lainnya")}
-            </small>
+        </td>
 
-          </td>
+        <td>
+          ${rupiah(product.price)}
+        </td>
 
-          <td>
-            ${rupiah(p.price)}
-          </td>
+        <td>
+          ${Number(product.stock) || 0}
+        </td>
 
-          <td>
-            ${Number(p.stock) || 0}
-          </td>
+        <td>
 
-          <td>
+          <button
+            class="table-action edit"
+            data-edit="${esc(product.id)}"
+          >
+            Edit
+          </button>
 
-            <button
-              class="table-action edit"
-              data-edit="${esc(p.id)}"
-            >
-              Edit
-            </button>
+          <button
+            class="table-action delete"
+            data-delete="${esc(product.id)}"
+          >
+            Hapus
+          </button>
 
-            <button
-              class="table-action delete"
-              data-delete="${esc(p.id)}"
-            >
-              Hapus
-            </button>
+        </td>
 
-          </td>
+      </tr>
 
-        </tr>
+    `).join("")
 
-      `).join("")
-
-      : `
-
-        <tr>
-
-          <td colspan="4">
-            Belum ada produk. Tambahkan lewat formulir.
-          </td>
-
-        </tr>
-
-      `;
+    : `
+      <tr>
+        <td colspan="4">
+          Belum ada produk. Tambahkan lewat formulir.
+        </td>
+      </tr>
+    `;
 
 
   $("admin-products")
@@ -394,9 +388,9 @@ function renderProducts() {
 }
 
 
-/* =========================
+/* =========================================================
    ORDERS
-========================= */
+========================================================= */
 
 async function loadOrders() {
 
@@ -410,23 +404,23 @@ async function loadOrders() {
 
   try {
 
-    const snap = await getDocs(
+    const snapshot = await getDocs(
       query(
         collection(db, "orders"),
         orderBy("createdAt", "desc")
       )
     );
 
-    orders = snap.docs.map(d => ({
-      id: d.id,
-      ...d.data()
+    orders = snapshot.docs.map(document => ({
+      id: document.id,
+      ...document.data()
     }));
 
     renderOrders();
 
-  } catch (err) {
+  } catch (error) {
 
-    console.error(err);
+    console.error("LOAD ORDERS ERROR:", error);
 
     $("admin-orders").innerHTML =
       '<tr><td colspan="6">Gagal memuat pesanan. Periksa Firestore Rules.</td></tr>';
@@ -436,9 +430,9 @@ async function loadOrders() {
 }
 
 
-/* =========================
+/* =========================================================
    RENDER ORDERS
-========================= */
+========================================================= */
 
 function renderOrders() {
 
@@ -446,141 +440,137 @@ function renderOrders() {
 
   $("stat-sales").textContent = rupiah(
     orders
-      .filter(o => o.status === "Selesai")
+      .filter(order => order.status === "Selesai")
       .reduce(
-        (sum, o) =>
-          sum + (Number(o.total) || 0),
+        (total, order) =>
+          total + (Number(order.total) || 0),
         0
       )
   );
 
 
-  $("admin-orders").innerHTML =
+  $("admin-orders").innerHTML = orders.length
 
-    orders.length
+    ? orders.map(order => `
 
-      ? orders.map(o => `
+      <tr>
 
-        <tr>
+        <td>
 
-          <td>
+          <strong>
+            ${esc(order.id.slice(0, 9))}
+          </strong>
 
-            <strong>
-              ${esc(o.id.slice(0, 9))}
-            </strong>
+          <small>
+            ${esc(order.customerName)}
+            ·
+            ${esc(order.phone)}
+          </small>
 
-            <small>
-              ${esc(o.customerName)} · ${esc(o.phone)}
-            </small>
+          <small>
+            ${esc(order.address)}
+          </small>
 
-            <small>
-              ${esc(o.address)}
-            </small>
-
-          </td>
-
-
-          <td>
-
-            ${(o.items || [])
-              .map(i =>
-                `${esc(i.name)} ×${Number(i.qty) || 1}`
-              )
-              .join("<br>")}
-
-          </td>
+        </td>
 
 
-          <td>
-            <strong>
-              ${rupiah(o.total)}
-            </strong>
-          </td>
+        <td>
+
+          ${(order.items || [])
+            .map(item =>
+              `${esc(item.name)} ×${Number(item.qty) || 1}`
+            )
+            .join("<br>")}
+
+        </td>
 
 
-          <td>
-            ${esc(o.payment)}
-          </td>
+        <td>
+          <strong>
+            ${rupiah(order.total)}
+          </strong>
+        </td>
 
 
-          <td>
-
-            <span class="status-pill">
-              ${esc(
-                o.status ||
-                "Menunggu konfirmasi"
-              )}
-            </span>
-
-          </td>
+        <td>
+          ${esc(order.payment)}
+        </td>
 
 
-          <td>
+        <td>
 
-            <select
-              class="status-select"
-              data-status="${esc(o.id)}"
+          <span class="status-pill">
+            ${esc(
+              order.status ||
+              "Menunggu konfirmasi"
+            )}
+          </span>
+
+        </td>
+
+
+        <td>
+
+          <select
+            class="status-select"
+            data-status="${esc(order.id)}"
+          >
+
+            <option
+              ${order.status === "Menunggu konfirmasi"
+                ? "selected"
+                : ""}
             >
+              Menunggu konfirmasi
+            </option>
 
-              <option
-                ${o.status === "Menunggu konfirmasi"
-                  ? "selected"
-                  : ""}
-              >
-                Menunggu konfirmasi
-              </option>
+            <option
+              ${order.status === "Diproses"
+                ? "selected"
+                : ""}
+            >
+              Diproses
+            </option>
 
-              <option
-                ${o.status === "Diproses"
-                  ? "selected"
-                  : ""}
-              >
-                Diproses
-              </option>
+            <option
+              ${order.status === "Dikirim"
+                ? "selected"
+                : ""}
+            >
+              Dikirim
+            </option>
 
-              <option
-                ${o.status === "Dikirim"
-                  ? "selected"
-                  : ""}
-              >
-                Dikirim
-              </option>
+            <option
+              ${order.status === "Selesai"
+                ? "selected"
+                : ""}
+            >
+              Selesai
+            </option>
 
-              <option
-                ${o.status === "Selesai"
-                  ? "selected"
-                  : ""}
-              >
-                Selesai
-              </option>
+            <option
+              ${order.status === "Dibatalkan"
+                ? "selected"
+                : ""}
+            >
+              Dibatalkan
+            </option>
 
-              <option
-                ${o.status === "Dibatalkan"
-                  ? "selected"
-                  : ""}
-              >
-                Dibatalkan
-              </option>
+          </select>
 
-            </select>
+        </td>
 
-          </td>
+      </tr>
 
-        </tr>
+    `).join("")
 
-      `).join("")
-
-      : `
-
-        <tr>
-
-          <td colspan="6">
-            Belum ada pesanan.
-          </td>
-
-        </tr>
-
-      `;
+    : `
+      <tr>
+        <td colspan="6">
+          Belum ada pesanan.
+        </td>
+      </tr>
+    `;
 
 
   $("admin-orders")
@@ -598,20 +588,18 @@ function renderOrders() {
 }
 
 
-/* =========================
+/* =========================================================
    EDIT PRODUCT
-========================= */
+========================================================= */
 
 function editProduct(id) {
 
   const product =
-    products.find(p => p.id === id);
+    products.find(item => item.id === id);
 
   if (!product) return;
 
-
-  const form =
-    $("product-form");
+  const form = $("product-form");
 
 
   for (const key of [
@@ -647,9 +635,7 @@ function editProduct(id) {
 
   if (currentImageUrl) {
 
-    showImagePreview(
-      currentImageUrl
-    );
+    showImagePreview(currentImageUrl);
 
   } else {
 
@@ -670,9 +656,9 @@ function editProduct(id) {
 }
 
 
-/* =========================
+/* =========================================================
    RESET FORM
-========================= */
+========================================================= */
 
 function resetForm() {
 
@@ -700,37 +686,70 @@ $("cancel-edit").onclick =
   resetForm;
 
 
-/* =========================
-   UPLOAD IMAGE
-========================= */
+/* =========================================================
+   FILE → BASE64
+========================================================= */
 
 function fileToBase64(file) {
+
   return new Promise((resolve, reject) => {
+
     const reader = new FileReader();
 
     reader.onload = () => {
-      const result = String(reader.result || "");
 
-      // Buang prefix:
-      // data:image/png;base64,
-      const base64 = result.split(",")[1];
+      const result =
+        String(reader.result || "");
+
+      const parts =
+        result.split(",");
+
+      if (parts.length < 2) {
+
+        reject(
+          new Error("Gagal membaca data foto.")
+        );
+
+        return;
+
+      }
+
+      const base64 = parts[1];
 
       if (!base64) {
-        reject(new Error("Gagal membaca data foto."));
+
+        reject(
+          new Error("Data foto kosong.")
+        );
+
         return;
+
       }
 
       resolve(base64);
+
     };
+
 
     reader.onerror = () => {
-      reject(new Error("Gagal membaca file foto."));
+
+      reject(
+        new Error("Gagal membaca file foto.")
+      );
+
     };
 
+
     reader.readAsDataURL(file);
+
   });
+
 }
 
+
+/* =========================================================
+   UPLOAD IMAGE
+========================================================= */
 
 async function uploadImage(file, productName) {
 
@@ -738,71 +757,101 @@ async function uploadImage(file, productName) {
     return null;
   }
 
+
   const user = auth.currentUser;
 
   if (!user) {
+
     throw new Error(
       "Sesi admin sudah habis. Silakan login lagi."
     );
+
   }
 
+
   if (!validateImage(file)) {
+
     throw new Error(
       "Foto tidak valid atau ukurannya terlalu besar."
     );
+
   }
+
 
   toast("Mempersiapkan foto...");
 
-  const idToken = await user.getIdToken();
 
-  const content = await fileToBase64(file);
+  const idToken =
+    await user.getIdToken();
+
+
+  const content =
+    await fileToBase64(file);
+
 
   const payload = {
     fileName: file.name,
     content,
     contentType: file.type,
-    productName: productName
+    productName
   };
 
-  const response = await fetch(
-    "/api/upload-image",
-    {
+
+  const response =
+    await fetch("/api/upload-image", {
+
       method: "POST",
 
       headers: {
-        "Authorization": `Bearer ${idToken}`,
-        "Content-Type": "application/json"
+        "Authorization":
+          `Bearer ${idToken}`,
+
+        "Content-Type":
+          "application/json",
+
+        "Accept":
+          "application/json"
       },
 
-      body: JSON.stringify(payload)
-    }
-  );
+      body:
+        JSON.stringify(payload)
+
+    });
+
+
+  const responseText =
+    await response.text();
+
 
   let data = {};
 
-  const responseText = await response.text();
+  if (responseText) {
 
-  try {
-    data = responseText
-      ? JSON.parse(responseText)
-      : {};
-  } catch (err) {
+    try {
 
-    console.error(
-      "Response server bukan JSON:",
-      responseText
-    );
+      data =
+        JSON.parse(responseText);
 
-    throw new Error(
-      `Server upload error (${response.status}).`
-    );
+    } catch (error) {
+
+      console.error(
+        "SERVER RESPONSE BUKAN JSON:",
+        responseText
+      );
+
+      throw new Error(
+        `Server upload error (${response.status}).`
+      );
+
+    }
+
   }
+
 
   if (!response.ok) {
 
     console.error(
-      "Upload API error:",
+      "UPLOAD API ERROR:",
       data
     );
 
@@ -810,262 +859,276 @@ async function uploadImage(file, productName) {
       data.error ||
       `Upload foto gagal (${response.status}).`
     );
+
   }
+
 
   if (!data.imageUrl) {
+
     throw new Error(
-      "Upload berhasil tetapi URL foto tidak diterima."
+      "Upload berhasil tetapi URL foto tidak diterima server."
     );
+
   }
 
+
   return data;
+
 }
 
 
-/* =========================
+/* =========================================================
    SAVE PRODUCT
-========================= */
+========================================================= */
 
 $("product-form")
-  .addEventListener(
-    "submit",
-    async e => {
+  .addEventListener("submit", async event => {
 
-      e.preventDefault();
+    event.preventDefault();
 
 
-      if (!firebaseConfigured) {
+    if (!firebaseConfigured) {
 
-        demoNotice();
+      demoNotice();
 
-        return;
+      return;
 
-      }
-
-
-      const form =
-        new FormData(
-          e.currentTarget
-        );
+    }
 
 
-      const id =
-        String(
-          form.get("id") || ""
-        );
+    const form =
+      new FormData(event.currentTarget);
 
 
-      const productName =
-        String(
-          form.get("name") || ""
-        ).trim();
+    const id =
+      String(
+        form.get("id") || ""
+      );
 
 
-      const submitButton =
-        e.currentTarget.querySelector(
-          'button[type="submit"]'
-        );
+    const productName =
+      String(
+        form.get("name") || ""
+      ).trim();
 
 
-      const originalText =
-        submitButton.textContent;
+    const submitButton =
+      event.currentTarget.querySelector(
+        'button[type="submit"]'
+      );
 
 
-      try {
+    const originalText =
+      submitButton
+        ? submitButton.textContent
+        : "Simpan produk";
+
+
+    try {
+
+      if (submitButton) {
 
         submitButton.disabled = true;
 
         submitButton.textContent =
           "Menyimpan...";
 
-
-        let imageUrl =
-          currentImageUrl;
-
-        let imagePath =
-          currentImagePath;
+      }
 
 
-        /*
-          Kalau memilih foto baru,
-          upload terlebih dahulu.
-        */
+      if (!productName) {
 
-        if (selectedImageFile) {
-
-          toast(
-            "Mengupload foto..."
-          );
-
-
-          const uploaded =
-            await uploadImage(
-              selectedImageFile,
-              productName
-            );
-
-
-          imageUrl =
-            uploaded.imageUrl ||
-            uploaded.url ||
-            "";
-
-
-          imagePath =
-            uploaded.imagePath ||
-            "";
-
-        }
-
-
-        const payload = {
-
-          name:
-            productName,
-
-          category:
-            String(
-              form.get("category") || ""
-            ),
-
-          price:
-            Number(
-              form.get("price")
-            ),
-
-          stock:
-            Number(
-              form.get("stock")
-            ),
-
-          emoji:
-            String(
-              form.get("emoji") ||
-              "🍪"
-            ),
-
-          imageUrl,
-
-          imagePath,
-
-          description:
-            String(
-              form.get("description") ||
-              ""
-            ),
-
-          badge:
-            String(
-              form.get("badge") ||
-              ""
-            ),
-
-          active: true,
-
-          updatedAt:
-            serverTimestamp()
-
-        };
-
-
-        if (!payload.name) {
-
-          throw new Error(
-            "Nama produk wajib diisi."
-          );
-
-        }
-
-
-        if (
-          !Number.isFinite(
-            payload.price
-          ) ||
-          payload.price < 0
-        ) {
-
-          throw new Error(
-            "Harga produk tidak valid."
-          );
-
-        }
-
-
-        if (
-          !Number.isFinite(
-            payload.stock
-          ) ||
-          payload.stock < 0
-        ) {
-
-          throw new Error(
-            "Stok produk tidak valid."
-          );
-
-        }
-
-
-        /* EDIT */
-
-        if (id) {
-
-          await updateDoc(
-            doc(
-              db,
-              "products",
-              id
-            ),
-            payload
-          );
-
-
-        /* TAMBAH */
-
-        } else {
-
-          await addDoc(
-            collection(
-              db,
-              "products"
-            ),
-            {
-              ...payload,
-              createdAt:
-                serverTimestamp()
-            }
-          );
-
-        }
-
-
-        resetForm();
-
-
-        toast(
-          id
-            ? "Produk berhasil diperbarui! 🎉"
-            : "Produk berhasil ditambahkan! 🎉"
+        throw new Error(
+          "Nama produk wajib diisi."
         );
 
+      }
 
-        await loadProducts();
+
+      const price =
+        Number(form.get("price"));
+
+      const stock =
+        Number(form.get("stock"));
 
 
-      } catch (err) {
+      if (
+        !Number.isFinite(price) ||
+        price < 0
+      ) {
 
-        console.error(
-          "PRODUCT ERROR:",
-          err
+        throw new Error(
+          "Harga produk tidak valid."
+        );
+
+      }
+
+
+      if (
+        !Number.isFinite(stock) ||
+        stock < 0
+      ) {
+
+        throw new Error(
+          "Stok produk tidak valid."
+        );
+
+      }
+
+
+      let imageUrl =
+        currentImageUrl;
+
+      let imagePath =
+        currentImagePath;
+
+
+      /* -----------------------------------------
+         UPLOAD FOTO BARU
+      ----------------------------------------- */
+
+      if (selectedImageFile) {
+
+        toast("Mengupload foto...");
+
+
+        const uploaded =
+          await uploadImage(
+            selectedImageFile,
+            productName
+          );
+
+
+        imageUrl =
+          uploaded.imageUrl || "";
+
+        imagePath =
+          uploaded.path ||
+          uploaded.imagePath ||
+          "";
+
+      }
+
+
+      /* -----------------------------------------
+         PRODUCT DATA
+      ----------------------------------------- */
+
+      const payload = {
+
+        name:
+          productName,
+
+        category:
+          String(
+            form.get("category") || ""
+          ),
+
+        price,
+
+        stock,
+
+        emoji:
+          String(
+            form.get("emoji") ||
+            "🍪"
+          ),
+
+        imageUrl,
+
+        imagePath,
+
+        description:
+          String(
+            form.get("description") ||
+            ""
+          ),
+
+        badge:
+          String(
+            form.get("badge") ||
+            ""
+          ),
+
+        active: true,
+
+        updatedAt:
+          serverTimestamp()
+
+      };
+
+
+      /* -----------------------------------------
+         EDIT
+      ----------------------------------------- */
+
+      if (id) {
+
+        await updateDoc(
+          doc(
+            db,
+            "products",
+            id
+          ),
+          payload
         );
 
 
         toast(
-          err.message ||
-          "Gagal menyimpan produk."
+          "Produk berhasil diperbarui! 🎉"
+        );
+
+      }
+
+
+      /* -----------------------------------------
+         TAMBAH
+      ----------------------------------------- */
+
+      else {
+
+        await addDoc(
+          collection(
+            db,
+            "products"
+          ),
+          {
+            ...payload,
+            createdAt:
+              serverTimestamp()
+          }
         );
 
 
-      } finally {
+        toast(
+          "Produk berhasil ditambahkan! 🎉"
+        );
+
+      }
+
+
+      resetForm();
+
+      await loadProducts();
+
+
+    } catch (error) {
+
+      console.error(
+        "PRODUCT SAVE ERROR:",
+        error
+      );
+
+
+      toast(
+        error.message ||
+        "Gagal menyimpan produk."
+      );
+
+
+    } finally {
+
+      if (submitButton) {
 
         submitButton.disabled =
           false;
@@ -1076,18 +1139,19 @@ $("product-form")
       }
 
     }
-  );
+
+  });
 
 
-/* =========================
+/* =========================================================
    DELETE PRODUCT
-========================= */
+========================================================= */
 
 async function removeProduct(id) {
 
   const product =
     products.find(
-      p => p.id === id
+      item => item.id === id
     );
 
 
@@ -1122,9 +1186,13 @@ async function removeProduct(id) {
     await loadProducts();
 
 
-  } catch (err) {
+  } catch (error) {
 
-    console.error(err);
+    console.error(
+      "DELETE PRODUCT ERROR:",
+      error
+    );
+
 
     toast(
       "Gagal menghapus produk. Periksa Firestore Rules."
@@ -1135,9 +1203,9 @@ async function removeProduct(id) {
 }
 
 
-/* =========================
+/* =========================================================
    UPDATE ORDER STATUS
-========================= */
+========================================================= */
 
 async function updateStatus(
   id,
@@ -1168,9 +1236,13 @@ async function updateStatus(
     await loadOrders();
 
 
-  } catch (err) {
+  } catch (error) {
 
-    console.error(err);
+    console.error(
+      "UPDATE STATUS ERROR:",
+      error
+    );
+
 
     toast(
       "Gagal memperbarui status. Periksa Firestore Rules."
@@ -1181,9 +1253,9 @@ async function updateStatus(
 }
 
 
-/* =========================
+/* =========================================================
    REFRESH
-========================= */
+========================================================= */
 
 $("refresh").onclick =
   loadProducts;
