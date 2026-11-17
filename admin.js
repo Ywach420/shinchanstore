@@ -704,85 +704,121 @@ $("cancel-edit").onclick =
    UPLOAD IMAGE
 ========================= */
 
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = String(reader.result || "");
+
+      // Buang prefix:
+      // data:image/png;base64,
+      const base64 = result.split(",")[1];
+
+      if (!base64) {
+        reject(new Error("Gagal membaca data foto."));
+        return;
+      }
+
+      resolve(base64);
+    };
+
+    reader.onerror = () => {
+      reject(new Error("Gagal membaca file foto."));
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+
 async function uploadImage(file, productName) {
 
-  if (!file) return null;
+  if (!file) {
+    return null;
+  }
 
-
-  const user =
-    auth.currentUser;
+  const user = auth.currentUser;
 
   if (!user) {
-
     throw new Error(
       "Sesi admin sudah habis. Silakan login lagi."
     );
-
   }
 
-
-  const idToken =
-    await user.getIdToken();
-
-
-  const formData =
-    new FormData();
-
-  formData.append(
-    "file",
-    file
-  );
-
-  formData.append(
-    "productName",
-    productName
-  );
-
-
-  const response =
-    await fetch(
-      "/api/upload-image",
-      {
-        method: "POST",
-
-        headers: {
-          Authorization:
-            `Bearer ${idToken}`
-        },
-
-        body: formData
-      }
+  if (!validateImage(file)) {
+    throw new Error(
+      "Foto tidak valid atau ukurannya terlalu besar."
     );
+  }
 
+  toast("Mempersiapkan foto...");
+
+  const idToken = await user.getIdToken();
+
+  const content = await fileToBase64(file);
+
+  const payload = {
+    fileName: file.name,
+    content,
+    contentType: file.type,
+    productName: productName
+  };
+
+  const response = await fetch(
+    "/api/upload-image",
+    {
+      method: "POST",
+
+      headers: {
+        "Authorization": `Bearer ${idToken}`,
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify(payload)
+    }
+  );
 
   let data = {};
 
+  const responseText = await response.text();
+
   try {
+    data = responseText
+      ? JSON.parse(responseText)
+      : {};
+  } catch (err) {
 
-    data =
-      await response.json();
-
-  } catch {
-
-    throw new Error(
-      "Server upload tidak memberikan response JSON."
+    console.error(
+      "Response server bukan JSON:",
+      responseText
     );
 
+    throw new Error(
+      `Server upload error (${response.status}).`
+    );
   }
-
 
   if (!response.ok) {
 
-    throw new Error(
-      data.error ||
-      "Upload foto gagal."
+    console.error(
+      "Upload API error:",
+      data
     );
 
+    throw new Error(
+      data.error ||
+      `Upload foto gagal (${response.status}).`
+    );
   }
 
+  if (!data.imageUrl) {
+    throw new Error(
+      "Upload berhasil tetapi URL foto tidak diterima."
+    );
+  }
 
   return data;
-
 }
 
 
