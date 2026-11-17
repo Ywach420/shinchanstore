@@ -10,10 +10,20 @@ function getFirebaseAdmin() {
     const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
     if (!raw) {
-      throw new Error("FIREBASE_SERVICE_ACCOUNT_JSON tidak ditemukan");
+      throw new Error(
+        "FIREBASE_SERVICE_ACCOUNT_JSON belum dikonfigurasi"
+      );
     }
 
-    const serviceAccount = JSON.parse(raw);
+    let serviceAccount;
+
+    try {
+      serviceAccount = JSON.parse(raw);
+    } catch (error) {
+      throw new Error(
+        "FIREBASE_SERVICE_ACCOUNT_JSON bukan JSON yang valid"
+      );
+    }
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
@@ -40,10 +50,14 @@ function getExtension(type) {
     "image/gif": "gif"
   };
 
-  return map[type];
+  return map[type] || null;
 }
 
 export default async function handler(req, res) {
+
+  // =========================
+  // METHOD
+  // =========================
 
   if (req.method !== "POST") {
     return res.status(405).json({
@@ -54,7 +68,7 @@ export default async function handler(req, res) {
   try {
 
     // =========================
-    // 1. CEK AUTH
+    // CEK FIREBASE LOGIN
     // =========================
 
     const authHeader =
@@ -74,10 +88,13 @@ export default async function handler(req, res) {
     try {
       firebaseApp = getFirebaseAdmin();
     } catch (error) {
-      console.error("FIREBASE INIT ERROR:", error);
+      console.error(
+        "Firebase Admin error:",
+        error
+      );
 
       return res.status(500).json({
-        error: "Firebase Admin gagal dijalankan: " + error.message
+        error: error.message
       });
     }
 
@@ -88,12 +105,21 @@ export default async function handler(req, res) {
         .auth(firebaseApp)
         .verifyIdToken(idToken);
     } catch (error) {
-      console.error("FIREBASE AUTH ERROR:", error);
+
+      console.error(
+        "Firebase token error:",
+        error
+      );
 
       return res.status(401).json({
-        error: "Token login Firebase tidak valid atau sudah expired"
+        error:
+          "Login Firebase tidak valid. Silakan login ulang."
       });
     }
+
+    // =========================
+    // CEK ADMIN
+    // =========================
 
     if (decoded.email !== ADMIN_EMAIL) {
       return res.status(403).json({
@@ -102,7 +128,7 @@ export default async function handler(req, res) {
     }
 
     // =========================
-    // 2. CEK GITHUB TOKEN
+    // CEK GITHUB TOKEN
     // =========================
 
     const githubToken =
@@ -110,49 +136,41 @@ export default async function handler(req, res) {
 
     if (!githubToken) {
       return res.status(500).json({
-        error: "GITHUB_TOKEN belum tersedia di Vercel Production"
+        error:
+          "GITHUB_TOKEN belum tersedia di Vercel Production"
       });
     }
 
     // =========================
-    // 3. BACA MULTIPART FORM
+    // AMBIL DATA JSON
     // =========================
 
-    const formidableModule =
-      await import("formidable");
+    const {
+      fileName,
+      content,
+      contentType
+    } = req.body || {};
 
-    const formidable =
-      formidableModule.default ||
-      formidableModule.formidable;
-
-    const form =
-      formidable({
-        multiples: false,
-        maxFileSize: 2 * 1024 * 1024
-      });
-
-    const [fields, files] =
-      await form.parse(req);
-
-    const uploadedFile =
-      files.file?.[0] || files.file;
-
-    if (!uploadedFile) {
+    if (!fileName) {
       return res.status(400).json({
-        error: "File foto tidak ditemukan"
+        error: "Nama file tidak ada"
       });
     }
 
-    const fileName =
-      uploadedFile.originalFilename ||
-      "product-image";
+    if (!content) {
+      return res.status(400).json({
+        error: "Data foto tidak ada"
+      });
+    }
 
-    const contentType =
-      uploadedFile.mimetype ||
-      "";
+    if (!contentType) {
+      return res.status(400).json({
+        error: "Tipe foto tidak ada"
+      });
+    }
 
     // =========================
-    // 4. VALIDASI FILE
+    // CEK FORMAT
     // =========================
 
     const extension =
@@ -165,32 +183,39 @@ export default async function handler(req, res) {
       });
     }
 
-    if (
-      uploadedFile.size >
-      2 * 1024 * 1024
-    ) {
+    // =========================
+    // BASE64 -> BUFFER
+    // =========================
+
+    let buffer;
+
+    try {
+      buffer = Buffer.from(
+        content,
+        "base64"
+      );
+    } catch (error) {
       return res.status(400).json({
-        error: "Ukuran foto maksimal 2 MB"
+        error: "Data foto rusak atau bukan Base64 yang valid"
       });
     }
 
     // =========================
-    // 5. BACA FILE
+    // BATAS 2 MB
     // =========================
 
-    const fs =
-      await import("fs/promises");
-
-    const buffer =
-      await fs.readFile(
-        uploadedFile.filepath
-      );
-
-    const content =
-      buffer.toString("base64");
+    if (
+      buffer.length >
+      2 * 1024 * 1024
+    ) {
+      return res.status(400).json({
+        error:
+          "Ukuran foto maksimal 2 MB"
+      });
+    }
 
     // =========================
-    // 6. NAMA FILE
+    // NAMA FILE
     // =========================
 
     const baseName =
@@ -208,39 +233,46 @@ export default async function handler(req, res) {
       `product-images/${uniqueName}`;
 
     // =========================
-    // 7. UPLOAD KE GITHUB
+    // UPLOAD GITHUB
     // =========================
 
     const githubUrl =
-      `https://api.github.com/repos/${OWNER}/${REPO}/contents/${path}`;
+      `https://api.github.com/repos/${OWNER}/${REPO}/contents/${path
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/")}`;
 
     const githubResponse =
-      await fetch(githubUrl, {
-        method: "PUT",
+      await fetch(
+        githubUrl,
+        {
+          method: "PUT",
 
-        headers: {
-          Authorization:
-            `Bearer ${githubToken}`,
+          headers: {
+            Authorization:
+              `Bearer ${githubToken}`,
 
-          Accept:
-            "application/vnd.github+json",
+            Accept:
+              "application/vnd.github+json",
 
-          "X-GitHub-Api-Version":
-            "2022-11-28",
+            "X-GitHub-Api-Version":
+              "2022-11-28",
 
-          "Content-Type":
-            "application/json"
-        },
+            "Content-Type":
+              "application/json"
+          },
 
-        body: JSON.stringify({
-          message:
-            `Upload product image: ${uniqueName}`,
+          body: JSON.stringify({
+            message:
+              `Upload product image: ${uniqueName}`,
 
-          content,
+            content:
+              buffer.toString("base64"),
 
-          branch: BRANCH
-        })
-      });
+            branch: BRANCH
+          })
+        }
+      );
 
     const githubText =
       await githubResponse.text();
@@ -256,10 +288,15 @@ export default async function handler(req, res) {
       };
     }
 
+    // =========================
+    // GITHUB ERROR
+    // =========================
+
     if (!githubResponse.ok) {
 
       console.error(
-        "GITHUB ERROR:",
+        "GitHub API error:",
+        githubResponse.status,
         githubData
       );
 
@@ -267,17 +304,22 @@ export default async function handler(req, res) {
         error:
           `GitHub menolak upload (${githubResponse.status}): ${
             githubData.message ||
-            "Unknown error"
+            "Tidak diketahui"
           }`
       });
     }
 
     // =========================
-    // 8. URL FOTO
+    // URL GAMBAR
     // =========================
 
     const imageUrl =
       `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${path}`;
+
+    console.log(
+      "IMAGE UPLOAD SUCCESS:",
+      imageUrl
+    );
 
     return res.status(200).json({
       success: true,
@@ -288,7 +330,7 @@ export default async function handler(req, res) {
   } catch (error) {
 
     console.error(
-      "UPLOAD IMAGE ERROR:",
+      "UPLOAD SERVER ERROR:",
       error
     );
 
