@@ -750,3 +750,67 @@ footer .footer-brand:hover .brand-logo {
     transform: none;
   }
 }
+/* =========================================================
+   SHINCHAN STORE — BANNER 2 MOBILE FIX
+   Original banner ratio: 1983 × 793
+   ========================================================= */
+
+@media (max-width: 620px) {
+
+  .promo.promo-banner {
+    width: 92%;
+    min-height: 0;
+
+    /* Pertahankan rasio asli banner */
+    aspect-ratio: 1983 / 793;
+
+    height: auto;
+
+    /* Jangan crop gambar */
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+
+    padding: 0;
+    overflow: hidden;
+
+    border-radius: 20px;
+  }
+
+  /* Teks tetap berada di dalam area kiri banner */
+  .promo-banner .promo-copy {
+    width: 52%;
+    padding: 0 0 0 6%;
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .promo-banner .eyebrow {
+    font-size: 8px;
+    letter-spacing: 1.4px;
+  }
+
+  .promo-banner h2 {
+    font-size: clamp(17px, 5vw, 24px);
+    line-height: 1.12;
+    margin: 7px 0;
+  }
+
+  .promo-banner p {
+    font-size: 9px;
+    line-height: 1.5;
+    margin: 0 0 10px;
+  }
+
+  .promo-banner .button {
+    font-size: 9px;
+    padding: 9px 12px;
+  }
+
+  /* Tidak diperlukan karena gambar sudah menjadi background */
+  .promo-banner .promo-art {
+    display: none;
+  }
+}
