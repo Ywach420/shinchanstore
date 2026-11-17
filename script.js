@@ -101,11 +101,117 @@ function renderFilters(){
   $("filters").querySelectorAll("[data-category]").forEach(b=>b.onclick=()=>setCategory(b.dataset.category));
 }
 function setCategory(name){activeCategory=name;renderCategories();renderFilters();renderProducts();$("produk").scrollIntoView({behavior:"smooth",block:"start"})}
-function renderProducts(){
-  const term=$("search").value.trim().toLowerCase();
-  const list=products.filter(p=>(activeCategory==="Semua Produk"||p.category===activeCategory)&&(`${p.name} ${p.category} ${p.description||""}`).toLowerCase().includes(term));
-  $("product-grid").innerHTML=list.length?list.map(p=>`<article class="product-card"><div class="product-image">${p.imageUrl?`<img class="product-photo" src="${safeText(p.imageUrl)}" alt="${safeText(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">`:""}<span class="emoji" ${p.imageUrl?`style="display:none"`:""}>${safeText(p.emoji||"🍪")}</span>${p.badge?`<span class="badge">${safeText(p.badge)}</span>`:""}</div><div class="product-info"><span class="category-name">${safeText(p.category||"Lainnya")}</span><h3>${safeText(p.name)}</h3><p class="desc">${safeText(p.description||"Jajanan pilihan Shinchan Store")}</p><div class="product-bottom"><div><span class="price">${rupiah(p.price)}</span><span class="old-price">${Number(p.stock||0)>0?`Stok: ${Number(p.stock)}`:"Stok belum tersedia"}</span></div><button class="add-btn" data-add="${safeText(p.id)}" aria-label="Tambah ${safeText(p.name)}" ${Number(p.stock||0)<=0?"disabled":""}>+</button></div></div></article>`).join(""):`<div class="empty">Belum ada produk yang cocok. Coba kata pencarian lain ya! 😊</div>`;
-  $("product-grid").querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>addToCart(b.dataset.add));
+function renderProducts() {
+  const term = $("search").value.trim().toLowerCase();
+
+  const list = products.filter(p =>
+    (activeCategory === "Semua Produk" || p.category === activeCategory) &&
+    (`${p.name} ${p.category} ${p.description || ""}`)
+      .toLowerCase()
+      .includes(term)
+  );
+
+  $("product-grid").innerHTML = list.length
+    ? list.map(p => {
+        const stock = Number(p.stock || 0);
+        const soldOut = stock <= 0;
+
+        return `
+          <article class="product-card ${soldOut ? "sold-out" : ""}">
+
+            <div class="product-image">
+
+              ${
+                p.imageUrl
+                  ? `
+                    <img
+                      class="product-photo"
+                      src="${safeText(p.imageUrl)}"
+                      alt="${safeText(p.name)}"
+                      loading="lazy"
+                      onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"
+                    >
+                  `
+                  : ""
+              }
+
+              <span
+                class="emoji"
+                ${p.imageUrl ? `style="display:none"` : ""}
+              >
+                ${safeText(p.emoji || "🍪")}
+              </span>
+
+              ${
+                soldOut
+                  ? `<span class="sold-out-badge">SOLD OUT</span>`
+                  : p.badge
+                    ? `<span class="badge">${safeText(p.badge)}</span>`
+                    : ""
+              }
+
+            </div>
+
+            <div class="product-info">
+
+              <span class="category-name">
+                ${safeText(p.category || "Lainnya")}
+              </span>
+
+              <h3>${safeText(p.name)}</h3>
+
+              <p class="desc">
+                ${safeText(
+                  p.description || "Jajanan pilihan Shinchan Store"
+                )}
+              </p>
+
+              <div class="product-bottom">
+
+                <div>
+                  <span class="price">
+                    ${rupiah(p.price)}
+                  </span>
+
+                  <span class="old-price ${
+                    soldOut ? "stock-empty" : ""
+                  }">
+                    ${
+                      soldOut
+                        ? "Stok habis"
+                        : `Stok: ${stock}`
+                    }
+                  </span>
+                </div>
+
+                <button
+                  class="add-btn"
+                  data-add="${safeText(p.id)}"
+                  aria-label="Tambah ${safeText(p.name)}"
+                  ${soldOut ? "disabled" : ""}
+                >
+                  ${soldOut ? "×" : "+"}
+                </button>
+
+              </div>
+
+            </div>
+
+          </article>
+        `;
+      }).join("")
+    : `
+      <div class="empty">
+        Belum ada produk yang cocok.
+        Coba kata pencarian lain ya! 😊
+      </div>
+    `;
+
+  $("product-grid")
+    .querySelectorAll("[data-add]:not([disabled])")
+    .forEach(b => {
+      b.onclick = () => addToCart(b.dataset.add);
+    });
 }
 function addToCart(id){const p=products.find(x=>x.id===id);if(!p)return;const row=cart.find(x=>x.id===id);if(row)row.qty++;else cart.push({...p,qty:1});renderCart();toast(`${p.name} ditambahkan ke keranjang 🛒`)}
 function renderCart(){
