@@ -814,3 +814,74 @@ footer .footer-brand:hover .brand-logo {
     display: none;
   }
 }
+/* =========================================================
+   🖼️ SHINCHAN STORE — CATEGORY PNG
+   ========================================================= */
+
+.category {
+  position: relative;
+  overflow: hidden;
+}
+
+.category-visual {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 10px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  z-index: 2;
+}
+
+.category-visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  transition:
+    transform .3s cubic-bezier(.2,.8,.2,1),
+    filter .3s ease;
+}
+
+.category-fallback {
+  font-size: 34px;
+  line-height: 1;
+}
+
+.category:hover .category-visual img,
+.category.active .category-visual img {
+  transform: scale(1.1) translateY(-3px) rotate(-3deg);
+  filter: drop-shadow(0 8px 8px rgba(80,40,20,.14));
+}
+
+.category::before {
+  content: "";
+  position: absolute;
+  width: 105px;
+  height: 105px;
+  border-radius: 50%;
+  background: #fff3e7;
+  left: 50%;
+  top: 30px;
+  transform: translateX(-50%);
+  z-index: 0;
+  opacity: .7;
+}
+
+.category b,
+.category small {
+  position: relative;
+  z-index: 2;
+}
+
+@media (max-width: 620px) {
+  .category-visual {
+    width: 55px;
+    height: 55px;
+    margin-bottom: 8px;
+  }
+
+  .category-fallback {
+    font-size: 28px;
+  }
+}
