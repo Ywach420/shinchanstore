@@ -975,3 +975,74 @@ footer .footer-brand:hover .brand-logo {
     font-size: 9px;
   }
 }
+/* =========================================================
+   🔴 SOLD OUT PRODUCT
+   ========================================================= */
+
+.product-card.sold-out {
+  position: relative;
+}
+
+.product-card.sold-out .product-image {
+  background: #f5f2ef;
+}
+
+.product-card.sold-out .product-photo {
+  filter: grayscale(.35) saturate(.65);
+  opacity: .72;
+}
+
+/* Badge SOLD OUT */
+.sold-out-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+
+  background: #29231f;
+  color: white;
+
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .8px;
+
+  padding: 7px 10px;
+  border-radius: 8px;
+
+  box-shadow:
+    0 6px 15px rgba(40, 30, 25, .18);
+}
+
+/* Stok habis */
+.stock-empty {
+  color: #c43a30 !important;
+  text-decoration: none !important;
+  font-weight: 800;
+}
+
+/* Tombol disabled */
+.add-btn:disabled {
+  background: #eee9e4;
+  color: #aaa19a;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none !important;
+}
+
+.product-card.sold-out:hover {
+  transform: translateY(-3px);
+}
+
+.product-card.sold-out:hover .product-photo {
+  transform: none;
+}
+
+/* Mobile */
+@media (max-width: 620px) {
+  .sold-out-badge {
+    top: 9px;
+    left: 9px;
+    font-size: 8px;
+    padding: 6px 8px;
+  }
+}
