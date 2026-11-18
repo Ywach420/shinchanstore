@@ -25,12 +25,10 @@ import {
 
 const $ = id => document.getElementById(id);
 
-const rupiah = number =>
-  new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
+const rupiah = n =>
+  `LKR ${new Intl.NumberFormat("en-LK", {
     maximumFractionDigits: 0
-  }).format(Number(number) || 0);
+  }).format(n || 0)}`;
 
 const esc = value =>
   String(value ?? "").replace(/[&<>"']/g, char => ({
