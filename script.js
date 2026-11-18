@@ -50,7 +50,10 @@ const demoProducts = [
 ];
 let products = [...demoProducts], activeCategory = "Semua Produk", cart = [];
 const $ = id => document.getElementById(id);
-const rupiah = n => new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(n||0);
+const rupiah = n =>
+  `LKR ${new Intl.NumberFormat("en-LK", {
+    maximumFractionDigits: 0
+  }).format(n || 0)}`;
 function toast(message){const el=$("toast");el.textContent=message;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2600)}
 function safeText(value=""){return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 async function loadProducts(){
