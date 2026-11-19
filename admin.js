@@ -25,10 +25,12 @@ import {
 
 const $ = id => document.getElementById(id);
 
+const currencyFormatter = new Intl.NumberFormat("en-LK", {
+  maximumFractionDigits: 0
+});
+
 const rupiah = n =>
-  `LKR ${new Intl.NumberFormat("en-LK", {
-    maximumFractionDigits: 0
-  }).format(n || 0)}`;
+  `LKR ${currencyFormatter.format(Number(n) || 0)}`;
 
 const esc = value =>
   String(value ?? "").replace(/[&<>"']/g, char => ({
@@ -38,6 +40,7 @@ const esc = value =>
     '"': "&quot;",
     "'": "&#39;"
   }[char]));
+
 
 function toast(message) {
   const element = $("toast");
@@ -51,6 +54,7 @@ function toast(message) {
     element.classList.remove("show");
   }, 2600);
 }
+
 
 function demoNotice() {
   toast("Firebase belum dikonfigurasi. Lengkapi firebase.js.");
@@ -88,6 +92,10 @@ function validateImage(file) {
     return false;
   }
 
+  /*
+    Batas file asli tetap 2 MB.
+    Setelah itu foto akan dikompres sebelum upload.
+  */
   if (file.size > 2 * 1024 * 1024) {
     toast("Ukuran foto maksimal 2 MB.");
     return false;
@@ -115,6 +123,7 @@ function showImagePreview(url = "") {
     preview.hidden = true;
   }
 }
+
 
 function clearImageSelection() {
   selectedImageFile = null;
@@ -154,7 +163,6 @@ if (imageFileInput) {
     const previewUrl = URL.createObjectURL(file);
 
     showImagePreview(previewUrl);
-
   });
 
 }
@@ -198,8 +206,11 @@ $("login-form").addEventListener("submit", async event => {
 
   const form = new FormData(event.currentTarget);
 
-  const email = String(form.get("email") || "").trim();
-  const password = String(form.get("password") || "");
+  const email =
+    String(form.get("email") || "").trim();
+
+  const password =
+    String(form.get("password") || "");
 
   try {
 
@@ -356,11 +367,15 @@ function renderProducts() {
     `).join("")
 
     : `
+
       <tr>
+
         <td colspan="4">
           Belum ada produk. Tambahkan lewat formulir.
         </td>
+
       </tr>
+
     `;
 
 
@@ -434,17 +449,19 @@ async function loadOrders() {
 
 function renderOrders() {
 
-  $("stat-orders").textContent = orders.length;
+  $("stat-orders").textContent =
+    orders.length;
 
-  $("stat-sales").textContent = rupiah(
-    orders
-      .filter(order => order.status === "Selesai")
-      .reduce(
-        (total, order) =>
-          total + (Number(order.total) || 0),
-        0
-      )
-  );
+  $("stat-sales").textContent =
+    rupiah(
+      orders
+        .filter(order => order.status === "Selesai")
+        .reduce(
+          (total, order) =>
+            total + (Number(order.total) || 0),
+          0
+        )
+    );
 
 
   $("admin-orders").innerHTML = orders.length
@@ -484,9 +501,11 @@ function renderOrders() {
 
 
         <td>
+
           <strong>
             ${rupiah(order.total)}
           </strong>
+
         </td>
 
 
@@ -563,11 +582,15 @@ function renderOrders() {
     `).join("")
 
     : `
+
       <tr>
+
         <td colspan="6">
           Belum ada pesanan.
         </td>
+
       </tr>
+
     `;
 
 
@@ -632,13 +655,9 @@ function editProduct(id) {
 
 
   if (currentImageUrl) {
-
     showImagePreview(currentImageUrl);
-
   } else {
-
     showImagePreview("");
-
   }
 
 
@@ -685,6 +704,154 @@ $("cancel-edit").onclick =
 
 
 /* =========================================================
+   IMAGE COMPRESSION
+========================================================= */
+
+/*
+  Foto akan diproses di browser sebelum dikirim
+  ke server.
+
+  Maksimal:
+  - lebar/tinggi: 1200px
+  - format output: WebP
+  - quality: 78%
+
+  GIF tidak dikompres supaya animasinya tetap aman.
+*/
+
+async function compressImage(file) {
+
+  if (!file) {
+    throw new Error("File foto tidak ditemukan.");
+  }
+
+
+  /*
+    GIF jangan diubah menjadi WebP karena
+    animasinya bisa hilang.
+  */
+  if (file.type === "image/gif") {
+    return file;
+  }
+
+
+  toast("Mengoptimalkan foto...");
+
+
+  const bitmap =
+    await createImageBitmap(file);
+
+
+  const MAX_SIZE = 1200;
+
+  const scale =
+    Math.min(
+      1,
+      MAX_SIZE / Math.max(
+        bitmap.width,
+        bitmap.height
+      )
+    );
+
+
+  const width =
+    Math.max(
+      1,
+      Math.round(bitmap.width * scale)
+    );
+
+
+  const height =
+    Math.max(
+      1,
+      Math.round(bitmap.height * scale)
+    );
+
+
+  const canvas =
+    document.createElement("canvas");
+
+
+  canvas.width = width;
+  canvas.height = height;
+
+
+  const context =
+    canvas.getContext("2d", {
+      alpha: true
+    });
+
+
+  if (!context) {
+    bitmap.close();
+    throw new Error(
+      "Browser tidak mendukung pemrosesan gambar."
+    );
+  }
+
+
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+
+
+  context.drawImage(
+    bitmap,
+    0,
+    0,
+    width,
+    height
+  );
+
+
+  bitmap.close();
+
+
+  const blob =
+    await new Promise(resolve => {
+
+      canvas.toBlob(
+        resolve,
+        "image/webp",
+        0.78
+      );
+
+    });
+
+
+  if (!blob) {
+    throw new Error(
+      "Gagal mengompres foto."
+    );
+  }
+
+
+  /*
+    Kalau hasil WebP ternyata lebih besar
+    daripada file asli, gunakan file asli.
+  */
+  if (blob.size >= file.size) {
+    return file;
+  }
+
+
+  const safeName =
+    file.name
+      .replace(/\.[^/.]+$/, "")
+      .replace(/[^a-zA-Z0-9_-]/g, "-");
+
+
+  return new File(
+    [blob],
+    `${safeName}.webp`,
+    {
+      type: "image/webp",
+      lastModified: Date.now()
+    }
+  );
+}
+
+
+/* =========================================================
    FILE → BASE64
 ========================================================= */
 
@@ -692,37 +859,47 @@ function fileToBase64(file) {
 
   return new Promise((resolve, reject) => {
 
-    const reader = new FileReader();
+    const reader =
+      new FileReader();
+
 
     reader.onload = () => {
 
       const result =
         String(reader.result || "");
 
+
       const parts =
         result.split(",");
+
 
       if (parts.length < 2) {
 
         reject(
-          new Error("Gagal membaca data foto.")
+          new Error(
+            "Gagal membaca data foto."
+          )
         );
 
         return;
-
       }
 
-      const base64 = parts[1];
+
+      const base64 =
+        parts[1];
+
 
       if (!base64) {
 
         reject(
-          new Error("Data foto kosong.")
+          new Error(
+            "Data foto kosong."
+          )
         );
 
         return;
-
       }
+
 
       resolve(base64);
 
@@ -732,7 +909,9 @@ function fileToBase64(file) {
     reader.onerror = () => {
 
       reject(
-        new Error("Gagal membaca file foto.")
+        new Error(
+          "Gagal membaca file foto."
+        )
       );
 
     };
@@ -756,7 +935,9 @@ async function uploadImage(file, productName) {
   }
 
 
-  const user = auth.currentUser;
+  const user =
+    auth.currentUser;
+
 
   if (!user) {
 
@@ -776,7 +957,30 @@ async function uploadImage(file, productName) {
   }
 
 
-  toast("Mempersiapkan foto...");
+  /*
+    Kompres terlebih dahulu.
+  */
+  const optimizedFile =
+    await compressImage(file);
+
+
+  const originalKB =
+    Math.round(file.size / 1024);
+
+  const optimizedKB =
+    Math.round(optimizedFile.size / 1024);
+
+
+  console.log(
+    `IMAGE OPTIMIZED: ${originalKB} KB → ${optimizedKB} KB`
+  );
+
+
+  toast(
+    optimizedFile !== file
+      ? `Foto dioptimalkan: ${originalKB} KB → ${optimizedKB} KB`
+      : "Foto siap diupload..."
+  );
 
 
   const idToken =
@@ -784,37 +988,49 @@ async function uploadImage(file, productName) {
 
 
   const content =
-    await fileToBase64(file);
+    await fileToBase64(optimizedFile);
 
 
   const payload = {
-    fileName: file.name,
+
+    fileName:
+      optimizedFile.name,
+
     content,
-    contentType: file.type,
+
+    contentType:
+      optimizedFile.type,
+
     productName
+
   };
 
 
   const response =
-    await fetch("/api/upload-image", {
+    await fetch(
+      "/api/upload-image",
+      {
 
-      method: "POST",
+        method: "POST",
 
-      headers: {
-        "Authorization":
-          `Bearer ${idToken}`,
+        headers: {
 
-        "Content-Type":
-          "application/json",
+          "Authorization":
+            `Bearer ${idToken}`,
 
-        "Accept":
-          "application/json"
-      },
+          "Content-Type":
+            "application/json",
 
-      body:
-        JSON.stringify(payload)
+          "Accept":
+            "application/json"
 
-    });
+        },
+
+        body:
+          JSON.stringify(payload)
+
+      }
+    );
 
 
   const responseText =
@@ -822,6 +1038,7 @@ async function uploadImage(file, productName) {
 
 
   let data = {};
+
 
   if (responseText) {
 
@@ -880,265 +1097,276 @@ async function uploadImage(file, productName) {
 ========================================================= */
 
 $("product-form")
-  .addEventListener("submit", async event => {
+  .addEventListener(
+    "submit",
+    async event => {
 
-    event.preventDefault();
-
-
-    if (!firebaseConfigured) {
-
-      demoNotice();
-
-      return;
-
-    }
+      event.preventDefault();
 
 
-    const form =
-      new FormData(event.currentTarget);
+      if (!firebaseConfigured) {
 
+        demoNotice();
 
-    const id =
-      String(
-        form.get("id") || ""
-      );
-
-
-    const productName =
-      String(
-        form.get("name") || ""
-      ).trim();
-
-
-    const submitButton =
-      event.currentTarget.querySelector(
-        'button[type="submit"]'
-      );
-
-
-    const originalText =
-      submitButton
-        ? submitButton.textContent
-        : "Simpan produk";
-
-
-    try {
-
-      if (submitButton) {
-
-        submitButton.disabled = true;
-
-        submitButton.textContent =
-          "Menyimpan...";
+        return;
 
       }
 
 
-      if (!productName) {
-
-        throw new Error(
-          "Nama produk wajib diisi."
+      const form =
+        new FormData(
+          event.currentTarget
         );
 
-      }
 
-
-      const price =
-        Number(form.get("price"));
-
-      const stock =
-        Number(form.get("stock"));
-
-
-      if (
-        !Number.isFinite(price) ||
-        price < 0
-      ) {
-
-        throw new Error(
-          "Harga produk tidak valid."
+      const id =
+        String(
+          form.get("id") || ""
         );
 
-      }
+
+      const productName =
+        String(
+          form.get("name") || ""
+        ).trim();
 
 
-      if (
-        !Number.isFinite(stock) ||
-        stock < 0
-      ) {
-
-        throw new Error(
-          "Stok produk tidak valid."
+      const submitButton =
+        event.currentTarget.querySelector(
+          'button[type="submit"]'
         );
 
-      }
+
+      const originalText =
+        submitButton
+          ? submitButton.textContent
+          : "Simpan produk";
 
 
-      let imageUrl =
-        currentImageUrl;
+      try {
 
-      let imagePath =
-        currentImagePath;
+        if (submitButton) {
 
+          submitButton.disabled = true;
 
-      /* -----------------------------------------
-         UPLOAD FOTO BARU
-      ----------------------------------------- */
+          submitButton.textContent =
+            "Menyimpan...";
 
-      if (selectedImageFile) {
-
-        toast("Mengupload foto...");
+        }
 
 
-        const uploaded =
-          await uploadImage(
-            selectedImageFile,
-            productName
+        if (!productName) {
+
+          throw new Error(
+            "Nama produk wajib diisi."
+          );
+
+        }
+
+
+        const price =
+          Number(form.get("price"));
+
+
+        const stock =
+          Number(form.get("stock"));
+
+
+        if (
+          !Number.isFinite(price) ||
+          price < 0
+        ) {
+
+          throw new Error(
+            "Harga produk tidak valid."
+          );
+
+        }
+
+
+        if (
+          !Number.isFinite(stock) ||
+          stock < 0
+        ) {
+
+          throw new Error(
+            "Stok produk tidak valid."
+          );
+
+        }
+
+
+        let imageUrl =
+          currentImageUrl;
+
+
+        let imagePath =
+          currentImagePath;
+
+
+        /* -----------------------------------------
+           UPLOAD FOTO BARU
+        ----------------------------------------- */
+
+        if (selectedImageFile) {
+
+          toast(
+            "Mengupload foto yang sudah dioptimalkan..."
           );
 
 
-        imageUrl =
-          uploaded.imageUrl || "";
-
-        imagePath =
-          uploaded.path ||
-          uploaded.imagePath ||
-          "";
-
-      }
+          const uploaded =
+            await uploadImage(
+              selectedImageFile,
+              productName
+            );
 
 
-      /* -----------------------------------------
-         PRODUCT DATA
-      ----------------------------------------- */
-
-      const payload = {
-
-        name:
-          productName,
-
-        category:
-          String(
-            form.get("category") || ""
-          ),
-
-        price,
-
-        stock,
-
-        emoji:
-          String(
-            form.get("emoji") ||
-            "🍪"
-          ),
-
-        imageUrl,
-
-        imagePath,
-
-        description:
-          String(
-            form.get("description") ||
-            ""
-          ),
-
-        badge:
-          String(
-            form.get("badge") ||
-            ""
-          ),
-
-        active: true,
-
-        updatedAt:
-          serverTimestamp()
-
-      };
+          imageUrl =
+            uploaded.imageUrl || "";
 
 
-      /* -----------------------------------------
-         EDIT
-      ----------------------------------------- */
+          imagePath =
+            uploaded.path ||
+            uploaded.imagePath ||
+            "";
 
-      if (id) {
+        }
 
-        await updateDoc(
-          doc(
-            db,
-            "products",
-            id
-          ),
-          payload
+
+        /* -----------------------------------------
+           PRODUCT DATA
+        ----------------------------------------- */
+
+        const payload = {
+
+          name:
+            productName,
+
+          category:
+            String(
+              form.get("category") || ""
+            ),
+
+          price,
+
+          stock,
+
+          emoji:
+            String(
+              form.get("emoji") ||
+              "🍪"
+            ),
+
+          imageUrl,
+
+          imagePath,
+
+          description:
+            String(
+              form.get("description") ||
+              ""
+            ),
+
+          badge:
+            String(
+              form.get("badge") ||
+              ""
+            ),
+
+          active: true,
+
+          updatedAt:
+            serverTimestamp()
+
+        };
+
+
+        /* -----------------------------------------
+           EDIT
+        ----------------------------------------- */
+
+        if (id) {
+
+          await updateDoc(
+            doc(
+              db,
+              "products",
+              id
+            ),
+            payload
+          );
+
+
+          toast(
+            "Produk berhasil diperbarui! 🎉"
+          );
+
+        }
+
+
+        /* -----------------------------------------
+           TAMBAH
+        ----------------------------------------- */
+
+        else {
+
+          await addDoc(
+            collection(
+              db,
+              "products"
+            ),
+            {
+              ...payload,
+
+              createdAt:
+                serverTimestamp()
+            }
+          );
+
+
+          toast(
+            "Produk berhasil ditambahkan! 🎉"
+          );
+
+        }
+
+
+        resetForm();
+
+        await loadProducts();
+
+
+      } catch (error) {
+
+        console.error(
+          "PRODUCT SAVE ERROR:",
+          error
         );
 
 
         toast(
-          "Produk berhasil diperbarui! 🎉"
-        );
-
-      }
-
-
-      /* -----------------------------------------
-         TAMBAH
-      ----------------------------------------- */
-
-      else {
-
-        await addDoc(
-          collection(
-            db,
-            "products"
-          ),
-          {
-            ...payload,
-            createdAt:
-              serverTimestamp()
-          }
+          error.message ||
+          "Gagal menyimpan produk."
         );
 
 
-        toast(
-          "Produk berhasil ditambahkan! 🎉"
-        );
+      } finally {
 
-      }
+        if (submitButton) {
 
+          submitButton.disabled =
+            false;
 
-      resetForm();
+          submitButton.textContent =
+            originalText;
 
-      await loadProducts();
-
-
-    } catch (error) {
-
-      console.error(
-        "PRODUCT SAVE ERROR:",
-        error
-      );
-
-
-      toast(
-        error.message ||
-        "Gagal menyimpan produk."
-      );
-
-
-    } finally {
-
-      if (submitButton) {
-
-        submitButton.disabled =
-          false;
-
-        submitButton.textContent =
-          originalText;
+        }
 
       }
 
     }
-
-  });
+  );
 
 
 /* =========================================================
@@ -1220,6 +1448,7 @@ async function updateStatus(
       ),
       {
         status,
+
         updatedAt:
           serverTimestamp()
       }
@@ -1260,3 +1489,4 @@ $("refresh").onclick =
 
 $("refresh-orders").onclick =
   loadOrders;
+```
