@@ -1056,3 +1056,466 @@ footer .footer-brand:hover .brand-logo {
   text-decoration: none !important;
   font-weight: 800;
 }
+/* =========================================================
+   🍜 SHINCHAN STORE — HOMEPAGE VISUAL UPGRADE V2
+   Tambahan tampilan saja — tidak mengubah JS
+   ========================================================= */
+
+/* ---------- GLOBAL SECTION DEPTH ---------- */
+
+.section {
+  position: relative;
+}
+
+.section::before {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: rgba(255, 179, 71, .07);
+  top: -70px;
+  left: -90px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+
+/* ---------- BENEFITS PREMIUM ---------- */
+
+.benefits {
+  position: relative;
+  z-index: 2;
+}
+
+.benefits > div {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255,255,255,.98),
+      rgba(255,249,241,.96)
+    );
+  box-shadow:
+    0 8px 25px rgba(72,38,18,.045);
+}
+
+.benefits > div::after {
+  content: "";
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  right: -42px;
+  top: -42px;
+  border-radius: 50%;
+  background: rgba(217,47,37,.045);
+  transition: transform .3s ease;
+}
+
+.benefits > div:hover::after {
+  transform: scale(1.5);
+}
+
+.benefits > div > span {
+  position: relative;
+  z-index: 2;
+}
+
+.benefits p {
+  position: relative;
+  z-index: 2;
+}
+
+
+/* ---------- CATEGORY SECTION ---------- */
+
+#kategori {
+  position: relative;
+}
+
+#kategori::after {
+  content: "🍜   🌶️   🍪   🥤";
+  position: absolute;
+  right: 0;
+  top: 8px;
+  font-size: 20px;
+  letter-spacing: 8px;
+  opacity: .13;
+  pointer-events: none;
+  transform: rotate(-4deg);
+}
+
+#kategori .section-head {
+  position: relative;
+}
+
+#kategori .section-head h2 {
+  position: relative;
+}
+
+#kategori .section-head h2::after {
+  content: "";
+  display: block;
+  width: 48px;
+  height: 4px;
+  margin-top: 10px;
+  border-radius: 99px;
+  background: var(--red);
+}
+
+
+/* ---------- CATEGORY CARD UPGRADE ---------- */
+
+.category {
+  background:
+    linear-gradient(
+      180deg,
+      #fff,
+      #fffaf5
+    );
+  box-shadow:
+    0 7px 20px rgba(70,35,15,.035);
+}
+
+.category:hover,
+.category.active {
+  box-shadow:
+    0 12px 28px rgba(91,42,20,.09);
+}
+
+.category small {
+  transition: color .2s ease;
+}
+
+.category:hover small,
+.category.active small {
+  color: #a9563e;
+}
+
+
+/* ---------- PROMO MORE POSTER-LIKE ---------- */
+
+.promo.promo-banner {
+  box-shadow:
+    0 20px 50px rgba(103,27,18,.16),
+    0 5px 12px rgba(103,27,18,.06);
+}
+
+.promo-banner .promo-copy {
+  text-shadow: 0 2px 12px rgba(74,18,12,.12);
+}
+
+.promo-banner .eyebrow {
+  background: rgba(255,255,255,.12);
+  padding: 6px 9px;
+  border-radius: 7px;
+}
+
+.promo-banner .button {
+  box-shadow: 0 8px 20px rgba(48,20,12,.13);
+}
+
+.promo-banner .button:hover {
+  transform: translateY(-3px) scale(1.02);
+}
+
+
+/* ---------- PRODUCT SECTION ---------- */
+
+#produk {
+  position: relative;
+}
+
+#produk::before {
+  content: "JAJAN ENAK";
+  position: absolute;
+  right: -8px;
+  top: -15px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: clamp(45px, 8vw, 100px);
+  font-weight: 900;
+  letter-spacing: -5px;
+  color: rgba(217,47,37,.035);
+  pointer-events: none;
+  user-select: none;
+}
+
+.product-head {
+  position: relative;
+  z-index: 2;
+}
+
+
+/* ---------- SEARCH MORE PREMIUM ---------- */
+
+.search-wrap {
+  background:
+    linear-gradient(
+      145deg,
+      #fff,
+      #fffaf5
+    );
+  box-shadow:
+    0 6px 18px rgba(66,34,15,.035);
+}
+
+.search-wrap span {
+  transition: transform .25s ease, color .25s ease;
+}
+
+.search-wrap:focus-within span {
+  color: var(--red);
+  transform: scale(1.08) rotate(-8deg);
+}
+
+
+/* ---------- FILTER PILLS ---------- */
+
+.filter {
+  position: relative;
+  overflow: hidden;
+}
+
+.filter::after {
+  content: "";
+  position: absolute;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.18);
+  right: -18px;
+  bottom: -18px;
+  transition: transform .25s ease;
+}
+
+.filter:hover::after,
+.filter.active::after {
+  transform: scale(1.8);
+}
+
+
+/* ---------- PRODUCT CARD MORE PREMIUM ---------- */
+
+.product-card {
+  background:
+    linear-gradient(
+      180deg,
+      #fff,
+      #fffdf9
+    );
+  box-shadow:
+    0 5px 18px rgba(68,34,15,.035);
+}
+
+.product-card::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 0;
+  height: 2px;
+  border-radius: 99px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(217,47,37,.18),
+    transparent
+  );
+  opacity: 0;
+  transition: opacity .25s ease;
+}
+
+.product-card:hover::after {
+  opacity: 1;
+}
+
+
+/* ---------- PRODUCT IMAGE ---------- */
+
+.product-image {
+  background:
+    radial-gradient(
+      circle at 50% 45%,
+      #fffefa 0%,
+      #fff5e6 65%,
+      #ffedd8 100%
+    );
+}
+
+.product-image::before {
+  content: "";
+  position: absolute;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  border: 1px dashed rgba(217,47,37,.08);
+  pointer-events: none;
+}
+
+.product-card:hover .product-image::before {
+  transform: scale(1.12);
+  transition: transform .4s ease;
+}
+
+
+/* ---------- PRODUCT INFO ---------- */
+
+.product-info h3 {
+  line-height: 1.4;
+}
+
+.product-info .desc {
+  line-height: 1.55;
+}
+
+
+/* ---------- PRICE ---------- */
+
+.price {
+  letter-spacing: -.2px;
+}
+
+.product-bottom {
+  padding-top: 3px;
+}
+
+
+/* ---------- CONTACT STRIP ---------- */
+
+.contact-strip {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 90% 20%,
+      rgba(255,179,71,.20),
+      transparent 32%
+    ),
+    linear-gradient(
+      135deg,
+      #fff2df,
+      #fff8ed
+    );
+}
+
+.contact-strip::before {
+  content: "💬";
+  position: absolute;
+  right: 8%;
+  top: 50%;
+  transform: translateY(-50%) rotate(8deg);
+  font-size: 75px;
+  opacity: .07;
+  pointer-events: none;
+}
+
+.contact-strip > div {
+  position: relative;
+  z-index: 2;
+}
+
+.contact-strip .button {
+  position: relative;
+  z-index: 2;
+}
+
+
+/* ---------- FOOTER ---------- */
+
+footer {
+  position: relative;
+  background:
+    linear-gradient(
+      180deg,
+      var(--paper),
+      #fff9ef
+    );
+}
+
+footer::before {
+  content: "";
+  position: absolute;
+  left: 6.5%;
+  right: 6.5%;
+  top: 0;
+  height: 1px;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      #ead8c5,
+      transparent
+    );
+}
+
+
+/* ---------- SCROLL REVEAL FEEL ---------- */
+
+.benefits > div,
+.category,
+.product-card,
+.contact-strip {
+  will-change: transform;
+}
+
+
+/* ---------- MOBILE ---------- */
+
+@media (max-width: 620px) {
+
+  #kategori::after {
+    display: none;
+  }
+
+  #produk::before {
+    font-size: 48px;
+    right: -5px;
+    top: -8px;
+    letter-spacing: -3px;
+  }
+
+  .section::before {
+    width: 120px;
+    height: 120px;
+    left: -70px;
+    top: -40px;
+  }
+
+  .benefits > div {
+    box-shadow:
+      0 5px 16px rgba(72,38,18,.04);
+  }
+
+  .product-card {
+    box-shadow:
+      0 4px 14px rgba(68,34,15,.035);
+  }
+
+  .product-card:hover {
+    transform: translateY(-3px);
+  }
+
+  .product-image::before {
+    width: 85px;
+    height: 85px;
+  }
+
+  .contact-strip::before {
+    right: 5%;
+    font-size: 55px;
+  }
+}
+
+
+/* ---------- REDUCE MOTION ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .benefits > div::after,
+  .filter::after,
+  .product-image::before {
+    transition: none !important;
+  }
+
+}
