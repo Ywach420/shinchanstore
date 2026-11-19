@@ -1046,3 +1046,13 @@ footer .footer-brand:hover .brand-logo {
     padding: 6px 8px;
   }
 }
+.old-price {
+  text-decoration: none !important;
+  color: var(--muted);
+}
+
+.stock-empty {
+  color: #c43a30 !important;
+  text-decoration: none !important;
+  font-weight: 800;
+}
