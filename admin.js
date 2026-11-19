@@ -1489,4 +1489,5 @@ $("refresh").onclick =
 
 $("refresh-orders").onclick =
   loadOrders;
-```
+
+console.log("Shinchan Admin JS loaded successfully.");
