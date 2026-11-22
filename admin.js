@@ -422,6 +422,131 @@ function renderProductPagination(total, totalPages) {
   });
 }
 
+
+async function adjustProductStock(id, delta) {
+  const product = products.find(item => item.id === id);
+  if (!product) return;
+
+  const currentStock = Math.max(0, Number(product.stock) || 0);
+  const nextStock = Math.max(0, currentStock + Number(delta || 0));
+
+  if (nextStock === currentStock) {
+    toast(nextStock <= 0 ? "Stok sudah 0." : "Stok tidak berubah.");
+    return;
+  }
+
+  const buttons = document.querySelectorAll(`[data-stock-plus="${CSS.escape(id)}"], [data-stock-minus="${CSS.escape(id)}"]`);
+  buttons.forEach(button => { button.disabled = true; });
+
+  try {
+    await updateDoc(doc(db, "products", id), {
+      stock: nextStock,
+      updatedAt: serverTimestamp()
+    });
+
+    product.stock = nextStock;
+    renderProducts();
+    toast(`${product.name}: stok ${nextStock}`);
+  } catch (error) {
+    console.error("QUICK STOCK ERROR:", error);
+    toast("Gagal mengubah stok. Periksa Firestore Rules.");
+  } finally {
+    buttons.forEach(button => { button.disabled = false; });
+  }
+}
+
+function openOrderDetail(id) {
+  const order = orders.find(item => item.id === id);
+  const modal = $("order-detail-modal");
+  const content = $("order-detail-content");
+  if (!order || !modal || !content) return;
+
+  const items = Array.isArray(order.items) ? order.items : [];
+  const status = order.status || "Menunggu konfirmasi";
+  const phoneRaw = String(order.phone || "").replace(/[^0-9+]/g, "");
+  let waPhone = phoneRaw.replace(/^00/, "");
+  if (waPhone.startsWith("0")) waPhone = "94" + waPhone.slice(1);
+
+  const waText = encodeURIComponent(
+    `Halo ${order.customerName || "Kak"}, kami dari Shinchan Store terkait pesanan #${order.id.slice(0, 9)}.`
+  );
+
+  content.innerHTML = `
+    <div class="order-detail-head">
+      <div>
+        <span class="eyebrow">DETAIL PESANAN</span>
+        <h2>#${esc(order.id.slice(0, 9))}</h2>
+      </div>
+      <span class="status-pill status-${status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}">${esc(status)}</span>
+    </div>
+
+    <div class="order-customer-card">
+      <div class="order-avatar">${esc((order.customerName || "?").trim().charAt(0).toUpperCase())}</div>
+      <div>
+        <strong>${esc(order.customerName || "Pelanggan")}</strong>
+        <small>📱 ${esc(order.phone || "-")}</small>
+        <small>📍 ${esc(order.address || "-")}</small>
+      </div>
+    </div>
+
+    <div class="order-detail-section">
+      <div class="detail-section-title">🛒 Item pesanan <span>${items.length} item</span></div>
+      <div class="order-items-list">
+        ${items.length ? items.map(item => `
+          <div class="order-item-row">
+            <div>
+              <strong>${esc(item.name || "Produk")}</strong>
+              <small>${Number(item.qty) || 1} × ${rupiah(item.price)}</small>
+            </div>
+            <strong>${rupiah((Number(item.price) || 0) * (Number(item.qty) || 1))}</strong>
+          </div>
+        `).join("") : `<div class="order-empty">Tidak ada detail item.</div>`}
+      </div>
+    </div>
+
+    <div class="order-total-box">
+      <span>Total pesanan</span>
+      <strong>${rupiah(order.total)}</strong>
+    </div>
+
+    <div class="order-detail-grid">
+      <div><small>Pembayaran</small><strong>💳 ${esc(order.payment || "-")}</strong></div>
+      <div><small>Status</small><select id="detail-status-select" class="status-select">
+        ${["Menunggu konfirmasi", "Diproses", "Dikirim", "Selesai", "Dibatalkan"].map(option =>
+          `<option value="${esc(option)}" ${option === status ? "selected" : ""}>${esc(option)}</option>`
+        ).join("")}
+      </select></div>
+    </div>
+
+    <div class="order-note">
+      <small>📝 Catatan</small>
+      <p>${esc(order.note || "Tidak ada catatan.")}</p>
+    </div>
+
+    <div class="order-detail-actions">
+      ${waPhone ? `<a class="button primary" href="https://wa.me/${encodeURIComponent(waPhone)}?text=${waText}" target="_blank" rel="noopener">💬 Chat WhatsApp</a>` : ""}
+      <button class="button ghost" type="button" id="detail-close-bottom">Tutup</button>
+    </div>
+  `;
+
+  modal.hidden = false;
+  modal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+
+  $("detail-status-select").onchange = event => {
+    updateStatus(order.id, event.target.value, true);
+  };
+  $("detail-close-bottom").onclick = closeOrderDetail;
+}
+
+function closeOrderDetail() {
+  const modal = $("order-detail-modal");
+  if (!modal) return;
+  modal.hidden = true;
+  modal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modal-open");
+}
+
 function renderProducts() {
   const activeProducts = products.filter(product => product.active !== false);
   $("stat-products").textContent = activeProducts.length;
@@ -466,9 +591,11 @@ function renderProducts() {
             <td><strong>${rupiah(product.price)}</strong></td>
 
             <td>
-              <span class="stock-badge ${meta.className}">
-                ${meta.dot} ${meta.label}
-              </span>
+              <div class="stock-control">
+                <button class="stock-step" type="button" data-stock-minus="${esc(product.id)}" aria-label="Kurangi stok">−</button>
+                <span class="stock-badge ${meta.className}">${meta.dot} ${meta.label}</span>
+                <button class="stock-step" type="button" data-stock-plus="${esc(product.id)}" aria-label="Tambah stok">+</button>
+              </div>
             </td>
 
             <td class="actions-cell">
@@ -494,6 +621,14 @@ function renderProducts() {
 
   tbody.querySelectorAll("[data-delete]").forEach(button => {
     button.onclick = () => removeProduct(button.dataset.delete);
+  });
+
+  tbody.querySelectorAll("[data-stock-plus]").forEach(button => {
+    button.onclick = () => adjustProductStock(button.dataset.stockPlus, 1);
+  });
+
+  tbody.querySelectorAll("[data-stock-minus]").forEach(button => {
+    button.onclick = () => adjustProductStock(button.dataset.stockMinus, -1);
   });
 
   renderProductPagination(filtered.length, totalPages);
@@ -610,163 +745,64 @@ async function loadOrders() {
 
 function renderOrders() {
 
-  $("stat-orders").textContent =
-    orders.length;
+  $("stat-orders").textContent = orders.length;
 
-  $("stat-sales").textContent =
-    rupiah(
-      orders
-        .filter(order => order.status === "Selesai")
-        .reduce(
-          (total, order) =>
-            total + (Number(order.total) || 0),
-          0
-        )
-    );
-
+  $("stat-sales").textContent = rupiah(
+    orders
+      .filter(order => order.status === "Selesai")
+      .reduce((total, order) => total + (Number(order.total) || 0), 0)
+  );
 
   $("admin-orders").innerHTML = orders.length
+    ? orders.map(order => {
+        const items = Array.isArray(order.items) ? order.items : [];
+        const itemCount = items.reduce((sum, item) => sum + (Number(item.qty) || 1), 0);
+        const status = order.status || "Menunggu konfirmasi";
 
-    ? orders.map(order => `
+        return `
+          <tr>
+            <td>
+              <strong>${esc(order.id.slice(0, 9))}</strong>
+              <small>${esc(order.customerName || "Pelanggan")} · ${esc(order.phone || "-")}</small>
+              <small>${esc(order.address || "-")}</small>
+            </td>
 
-      <tr>
+            <td>
+              <strong>${itemCount} item</strong>
+              <small>${items.slice(0, 2).map(item => `${esc(item.name)} ×${Number(item.qty) || 1}`).join(" · ")}${items.length > 2 ? " · ..." : ""}</small>
+            </td>
 
-        <td>
-
-          <strong>
-            ${esc(order.id.slice(0, 9))}
-          </strong>
-
-          <small>
-            ${esc(order.customerName)}
-            ·
-            ${esc(order.phone)}
-          </small>
-
-          <small>
-            ${esc(order.address)}
-          </small>
-
-        </td>
-
-
-        <td>
-
-          ${(order.items || [])
-            .map(item =>
-              `${esc(item.name)} ×${Number(item.qty) || 1}`
-            )
-            .join("<br>")}
-
-        </td>
-
-
-        <td>
-
-          <strong>
-            ${rupiah(order.total)}
-          </strong>
-
-        </td>
-
-
-        <td>
-          ${esc(order.payment)}
-        </td>
-
-
-        <td>
-
-          <span class="status-pill">
-            ${esc(
-              order.status ||
-              "Menunggu konfirmasi"
-            )}
-          </span>
-
-        </td>
-
-
-        <td>
-
-          <select
-            class="status-select"
-            data-status="${esc(order.id)}"
-          >
-
-            <option
-              ${order.status === "Menunggu konfirmasi"
-                ? "selected"
-                : ""}
-            >
-              Menunggu konfirmasi
-            </option>
-
-            <option
-              ${order.status === "Diproses"
-                ? "selected"
-                : ""}
-            >
-              Diproses
-            </option>
-
-            <option
-              ${order.status === "Dikirim"
-                ? "selected"
-                : ""}
-            >
-              Dikirim
-            </option>
-
-            <option
-              ${order.status === "Selesai"
-                ? "selected"
-                : ""}
-            >
-              Selesai
-            </option>
-
-            <option
-              ${order.status === "Dibatalkan"
-                ? "selected"
-                : ""}
-            >
-              Dibatalkan
-            </option>
-
-          </select>
-
-        </td>
-
-      </tr>
-
-    `).join("")
-
+            <td><strong>${rupiah(order.total)}</strong></td>
+            <td>${esc(order.payment || "-")}</td>
+            <td><span class="status-pill">${esc(status)}</span></td>
+            <td>
+              <div class="order-actions">
+                <button class="table-action detail" data-order-detail="${esc(order.id)}">Detail</button>
+                <select class="status-select" data-status="${esc(order.id)}">
+                  ${["Menunggu konfirmasi", "Diproses", "Dikirim", "Selesai", "Dibatalkan"].map(option => `
+                    <option ${status === option ? "selected" : ""}>${option}</option>
+                  `).join("")}
+                </select>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("")
     : `
-
       <tr>
-
         <td colspan="6">
-          Belum ada pesanan.
+          <div class="empty-orders">📦<strong>Belum ada pesanan.</strong><small>Pesanan baru akan muncul di sini.</small></div>
         </td>
-
       </tr>
-
     `;
 
+  $("admin-orders").querySelectorAll("[data-status]").forEach(select => {
+    select.onchange = () => updateStatus(select.dataset.status, select.value);
+  });
 
-  $("admin-orders")
-    .querySelectorAll("[data-status]")
-    .forEach(select => {
-
-      select.onchange = () =>
-        updateStatus(
-          select.dataset.status,
-          select.value
-        );
-
-    });
-
+  $("admin-orders").querySelectorAll("[data-order-detail]").forEach(button => {
+    button.onclick = () => openOrderDetail(button.dataset.orderDetail);
+  });
 }
 
 
@@ -1596,7 +1632,8 @@ async function removeProduct(id) {
 
 async function updateStatus(
   id,
-  status
+  status,
+  fromDetail = false
 ) {
 
   try {
@@ -1622,6 +1659,10 @@ async function updateStatus(
 
 
     await loadOrders();
+
+    if (fromDetail) {
+      openOrderDetail(id);
+    }
 
 
   } catch (error) {
@@ -1658,3 +1699,18 @@ $("refresh-orders").onclick =
   loadOrders;
 
 console.log("Shinchan Admin JS loaded successfully.");
+
+/* =========================================================
+   ORDER DETAIL MODAL / TOP LOGOUT
+========================================================= */
+
+$("order-detail-close")?.addEventListener("click", closeOrderDetail);
+$("order-detail-modal")?.addEventListener("click", event => {
+  if (event.target.id === "order-detail-modal") closeOrderDetail();
+});
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") closeOrderDetail();
+});
+
+$("logout-top")?.addEventListener("click", () => $("logout")?.click());
