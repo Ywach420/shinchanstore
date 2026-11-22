@@ -72,6 +72,12 @@ let selectedImageFile = null;
 let currentImageUrl = "";
 let currentImagePath = "";
 
+// Product catalog UI state
+let productPage = 1;
+const PRODUCT_PAGE_SIZE = 20;
+let productSearch = "";
+let productCategory = "Semua";
+
 
 /* =========================================================
    IMAGE VALIDATION
@@ -293,6 +299,7 @@ async function loadProducts() {
       ...document.data()
     }));
 
+    populateProductCategories();
     renderProducts();
 
   } catch (error) {
@@ -312,92 +319,246 @@ async function loadProducts() {
    RENDER PRODUCTS
 ========================================================= */
 
+function getFilteredProducts() {
+  const search = productSearch.trim().toLowerCase();
+
+  return products.filter(product => {
+    const matchesCategory =
+      productCategory === "Semua" ||
+      String(product.category || "Lainnya") === productCategory;
+
+    const haystack = [
+      product.name,
+      product.category,
+      product.description,
+      product.badge
+    ].map(value => String(value || "").toLowerCase()).join(" ");
+
+    return matchesCategory && (!search || haystack.includes(search));
+  });
+}
+
+function stockMeta(stock) {
+  const value = Number(stock) || 0;
+
+  if (value <= 0) {
+    return { className: "stock-zero", label: "Habis", dot: "🔴" };
+  }
+
+  if (value <= 5) {
+    return { className: "stock-low", label: String(value), dot: "🟡" };
+  }
+
+  return { className: "stock-good", label: String(value), dot: "🟢" };
+}
+
+function renderProductPagination(total, totalPages) {
+  const pagination = $("product-pagination");
+  const range = $("product-range");
+
+  if (!pagination || !range) return;
+
+  if (!total) {
+    range.textContent = "0 produk";
+    pagination.innerHTML = "";
+    return;
+  }
+
+  const start = (productPage - 1) * PRODUCT_PAGE_SIZE + 1;
+  const end = Math.min(productPage * PRODUCT_PAGE_SIZE, total);
+
+  range.textContent = `${start}–${end} dari ${total} produk`;
+
+  if (totalPages <= 1) {
+    pagination.innerHTML = "";
+    return;
+  }
+
+  const buttons = [];
+
+  buttons.push(`
+    <button class="page-btn" type="button" data-page="${productPage - 1}"
+      ${productPage === 1 ? "disabled" : ""} aria-label="Halaman sebelumnya">‹</button>
+  `);
+
+  const pages = new Set([1, totalPages]);
+
+  for (let page = productPage - 2; page <= productPage + 2; page++) {
+    if (page > 0 && page <= totalPages) pages.add(page);
+  }
+
+  const sortedPages = [...pages].sort((a, b) => a - b);
+  let previous = 0;
+
+  sortedPages.forEach(page => {
+    if (previous && page - previous > 1) {
+      buttons.push(`<span class="page-dots">…</span>`);
+    }
+
+    buttons.push(`
+      <button class="page-btn ${page === productPage ? "active" : ""}"
+        type="button" data-page="${page}">${page}</button>
+    `);
+
+    previous = page;
+  });
+
+  buttons.push(`
+    <button class="page-btn" type="button" data-page="${productPage + 1}"
+      ${productPage === totalPages ? "disabled" : ""} aria-label="Halaman berikutnya">›</button>
+  `);
+
+  pagination.innerHTML = buttons.join("");
+
+  pagination.querySelectorAll("[data-page]").forEach(button => {
+    button.onclick = () => {
+      const nextPage = Number(button.dataset.page);
+      if (!Number.isFinite(nextPage)) return;
+
+      productPage = Math.min(Math.max(nextPage, 1), totalPages);
+      renderProducts();
+      $("product-table")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    };
+  });
+}
+
 function renderProducts() {
+  const activeProducts = products.filter(product => product.active !== false);
+  $("stat-products").textContent = activeProducts.length;
 
-  $("stat-products").textContent =
-    products.filter(product => product.active !== false).length;
+  const lowStockCount = activeProducts.filter(product => Number(product.stock) > 0 && Number(product.stock) <= 5).length;
+  const soldOutCount = activeProducts.filter(product => Number(product.stock) <= 0).length;
 
-  $("admin-products").innerHTML = products.length
+  if ($("stat-low-stock")) {
+    $("stat-low-stock").textContent = lowStockCount;
+  }
 
-    ? products.map(product => `
+  if ($("stat-sold-out")) {
+    $("stat-sold-out").textContent = soldOutCount;
+  }
 
-      <tr>
+  const filtered = getFilteredProducts();
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PRODUCT_PAGE_SIZE));
 
-        <td>
+  if (productPage > totalPages) productPage = totalPages;
 
-          <strong>
-            ${esc(product.emoji || "🍪")}
-            ${esc(product.name)}
-          </strong>
+  const start = (productPage - 1) * PRODUCT_PAGE_SIZE;
+  const visible = filtered.slice(start, start + PRODUCT_PAGE_SIZE);
+  const tbody = $("admin-products");
 
-          <small>
-            ${esc(product.category || "Lainnya")}
-          </small>
+  tbody.innerHTML = visible.length
+    ? visible.map(product => {
+        const stock = Number(product.stock) || 0;
+        const meta = stockMeta(stock);
 
-        </td>
+        return `
+          <tr>
+            <td>
+              <div class="product-table-name">
+                <span class="product-table-emoji">${esc(product.emoji || "🍪")}</span>
+                <div>
+                  <strong>${esc(product.name)}</strong>
+                  <small>${esc(product.category || "Lainnya")}</small>
+                </div>
+              </div>
+            </td>
 
-        <td>
-          ${rupiah(product.price)}
-        </td>
+            <td><strong>${rupiah(product.price)}</strong></td>
 
-        <td>
-          ${Number(product.stock) || 0}
-        </td>
+            <td>
+              <span class="stock-badge ${meta.className}">
+                ${meta.dot} ${meta.label}
+              </span>
+            </td>
 
-        <td>
-
-          <button
-            class="table-action edit"
-            data-edit="${esc(product.id)}"
-          >
-            Edit
-          </button>
-
-          <button
-            class="table-action delete"
-            data-delete="${esc(product.id)}"
-          >
-            Hapus
-          </button>
-
-        </td>
-
-      </tr>
-
-    `).join("")
-
+            <td class="actions-cell">
+              <button class="table-action edit" data-edit="${esc(product.id)}">Edit</button>
+              <button class="table-action delete" data-delete="${esc(product.id)}">Hapus</button>
+            </td>
+          </tr>
+        `;
+      }).join("")
     : `
-
       <tr>
-
-        <td colspan="4">
-          Belum ada produk. Tambahkan lewat formulir.
+        <td colspan="4" class="empty-products">
+          <div>🍜</div>
+          <strong>${products.length ? "Produk tidak ditemukan." : "Belum ada produk."}</strong>
+          <small>${products.length ? "Coba kata kunci atau kategori lain." : "Tambahkan produk lewat formulir."}</small>
         </td>
-
       </tr>
-
     `;
 
+  tbody.querySelectorAll("[data-edit]").forEach(button => {
+    button.onclick = () => editProduct(button.dataset.edit);
+  });
 
-  $("admin-products")
-    .querySelectorAll("[data-edit]")
-    .forEach(button => {
+  tbody.querySelectorAll("[data-delete]").forEach(button => {
+    button.onclick = () => removeProduct(button.dataset.delete);
+  });
 
-      button.onclick = () =>
-        editProduct(button.dataset.edit);
+  renderProductPagination(filtered.length, totalPages);
 
+  const count = $("catalog-count");
+  if (count) count.textContent = `${filtered.length} produk`;
+}
+
+
+/* =========================================================
+   PRODUCT SEARCH / FILTER
+========================================================= */
+
+function setupProductFilters() {
+  const search = $("product-search");
+  const category = $("product-category-filter");
+
+  if (search && !search.dataset.bound) {
+    search.dataset.bound = "true";
+
+    let timer;
+
+    search.addEventListener("input", event => {
+      clearTimeout(timer);
+
+      timer = setTimeout(() => {
+        productSearch = String(event.target.value || "");
+        productPage = 1;
+        renderProducts();
+      }, 120);
     });
+  }
 
+  if (category && !category.dataset.bound) {
+    category.dataset.bound = "true";
 
-  $("admin-products")
-    .querySelectorAll("[data-delete]")
-    .forEach(button => {
-
-      button.onclick = () =>
-        removeProduct(button.dataset.delete);
-
+    category.addEventListener("change", event => {
+      productCategory = event.target.value;
+      productPage = 1;
+      renderProducts();
     });
+  }
+}
 
+function populateProductCategories() {
+  const select = $("product-category-filter");
+  if (!select) return;
+
+  const categories = [...new Set(
+    products
+      .map(product => String(product.category || "Lainnya").trim())
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b));
+
+  const current = productCategory;
+
+  select.innerHTML = `
+    <option value="Semua">Semua kategori</option>
+    ${categories.map(category => `
+      <option value="${esc(category)}">${esc(category)}</option>
+    `).join("")}
+  `;
+
+  select.value = categories.includes(current) ? current : "Semua";
+  productCategory = select.value;
 }
 
 
@@ -1479,6 +1640,12 @@ async function updateStatus(
 
 }
 
+
+/* =========================================================
+   PRODUCT UI INIT
+========================================================= */
+
+setupProductFilters();
 
 /* =========================================================
    REFRESH
